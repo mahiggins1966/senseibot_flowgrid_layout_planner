@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useGridStore } from '../store/gridStore';
 import { X, AlertTriangle, AlertCircle, Info, ChevronDown, ChevronUp, Download, CheckCircle2 } from 'lucide-react';
 import { calculateLayoutScore, LayoutScore } from '../utils/scoring';
+import { runAllSafetyChecks } from '../utils/safetyAnalysis';
 
 export function ScoringPanel() {
   const {
@@ -24,6 +25,12 @@ export function ScoringPanel() {
   const [bestScore, setBestScore] = useState<{ total: number; maxTotal: number; percentage: number }>({ total: 0, maxTotal: 115, percentage: 0 });
   const [expandedFactors, setExpandedFactors] = useState<Set<string>>(new Set());
   const [safetyAuditExpanded, setSafetyAuditExpanded] = useState(true);
+
+  // Calculate safety rules directly
+  const safetyRules = useMemo(() => {
+    const gridDims = getGridDimensions();
+    return runAllSafetyChecks(gridDims, zones, corridors, doors, paintedSquares, activities);
+  }, [zones, corridors, doors, paintedSquares, activities, getGridDimensions]);
 
   useEffect(() => {
     const gridDims = getGridDimensions();
@@ -301,8 +308,7 @@ export function ScoringPanel() {
                     <div className="text-xs text-gray-700 mb-2">{factor.suggestion}</div>
 
                     {/* Show safety rules if they exist (new system) */}
-                    {factor.safetyRules && console.log('SAFETY FACTOR:', factor.name, 'RULES:', factor.safetyRules.length)}
-                    {factor.safetyRules && factor.safetyRules.length > 0 && (
+                    {factor.name === 'safety' && safetyRules && safetyRules.length > 0 && (
                       <>
                         <div className="mb-3">
                           <button
@@ -314,7 +320,7 @@ export function ScoringPanel() {
                           </button>
                         </div>
                         <div className="space-y-0 mt-3 border-t border-gray-200">
-                          {factor.safetyRules.map((rule, idx) => {
+                          {safetyRules.map((rule, idx) => {
                             const needsDismiss = rule.status === 'warning' || rule.status === 'critical';
                             const isGood = rule.status === 'good';
 
@@ -365,7 +371,7 @@ export function ScoringPanel() {
                     )}
 
                     {/* Show flags if they exist (old system for non-safety factors) */}
-                    {factor.flags && factor.flags.length > 0 && !factor.safetyRules && (
+                    {factor.flags && factor.flags.length > 0 && factor.name !== 'safety' && (
                       <div className="space-y-2 mt-3">
                         {/* Active flags */}
                         {factor.flags.filter(f => !f.isDismissed).sort(sortBySeverity).map((flag) => (
