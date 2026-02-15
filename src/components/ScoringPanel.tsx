@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGridStore } from '../store/gridStore';
-import { X, AlertTriangle, AlertCircle, Info, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { X, AlertTriangle, AlertCircle, Info, ChevronDown, ChevronUp, Download, CheckCircle2 } from 'lucide-react';
 import { calculateLayoutScore, LayoutScore } from '../utils/scoring';
 
 export function ScoringPanel() {
@@ -105,6 +105,32 @@ export function ScoringPanel() {
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'good':
+        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+      case 'warning':
+        return <AlertCircle className="w-4 h-4 text-orange-600" />;
+      case 'critical':
+        return <AlertTriangle className="w-4 h-4 text-red-600" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'good':
+        return 'text-green-600';
+      case 'warning':
+        return 'text-orange-600';
+      case 'critical':
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
   const safetyFactor = score.factors.find(f => f.name === 'safety');
 
   // Sort safety flags by severity: HIGH > MEDIUM > LOW
@@ -119,62 +145,98 @@ export function ScoringPanel() {
   const dismissedSafetyFlags = safetyFactor?.flags?.filter(f => f.isDismissed).sort(sortBySeverity) || [];
 
   const exportSafetyReport = () => {
-    if (!safetyFactor || !safetyFactor.flags || safetyFactor.flags.length === 0) return;
+    if (!safetyFactor) return;
 
-    const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
-    let report = `SAFETY AUDIT REPORT\n`;
-    report += `Generated: ${new Date().toLocaleString()}\n`;
-    report += `Layout Score: ${score.percentage}% (${score.total}/${score.maxTotal} points)\n`;
-    report += `Safety Score: ${safetyFactor.score}/${safetyFactor.maxScore} points\n`;
-    report += `\n${'='.repeat(80)}\n\n`;
-
-    // Active flags by severity
-    const activeFlags = safetyFactor.flags.filter(f => !f.isDismissed).sort(sortBySeverity);
-    if (activeFlags.length > 0) {
-      report += `ACTIVE SAFETY FLAGS (${activeFlags.length})\n`;
-      report += `${'='.repeat(80)}\n\n`;
-
-      ['HIGH', 'MEDIUM', 'LOW'].forEach(severity => {
-        const flagsOfSeverity = activeFlags.filter(f => f.severity === severity);
-        if (flagsOfSeverity.length > 0) {
-          report += `${severity} SEVERITY (${flagsOfSeverity.length})\n`;
-          report += `${'-'.repeat(80)}\n`;
-          flagsOfSeverity.forEach((flag, idx) => {
-            report += `${idx + 1}. ${flag.message}\n`;
-            report += `   Rule ID: ${flag.id}\n`;
-            report += `   Recommendation: ${flag.recommendation}\n`;
-            report += `   Point Deduction: -${flag.pointsDeduction}\n\n`;
-          });
-        }
-      });
-    }
-
-    // Dismissed flags
-    const dismissedFlags = safetyFactor.flags.filter(f => f.isDismissed).sort(sortBySeverity);
-    if (dismissedFlags.length > 0) {
+    // Check if we're using the new rule-based system or old flag system
+    if (safetyFactor.safetyRules && safetyFactor.safetyRules.length > 0) {
+      // New system: export safety rules
+      const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+      let report = `SAFETY AUDIT REPORT\n`;
+      report += `Generated: ${new Date().toLocaleString()}\n`;
+      report += `Layout Score: ${score.percentage}% (${score.total}/${score.maxTotal} points)\n`;
+      report += `Safety Score: ${safetyFactor.score}/${safetyFactor.maxScore} points\n`;
       report += `\n${'='.repeat(80)}\n\n`;
-      report += `DISMISSED FLAGS (${dismissedFlags.length})\n`;
+
+      report += `SAFETY RULES EVALUATION\n`;
       report += `${'='.repeat(80)}\n\n`;
-      dismissedFlags.forEach((flag, idx) => {
-        report += `${idx + 1}. [${flag.severity}] ${flag.message}\n`;
-        report += `   Rule ID: ${flag.id}\n`;
-        report += `   Note: Dismissed by user\n\n`;
+
+      safetyFactor.safetyRules.forEach((rule, idx) => {
+        report += `${idx + 1}. ${rule.rule}\n`;
+        report += `   Status: ${rule.status.toUpperCase()}\n`;
+        report += `   Score: ${rule.score}/${rule.maxScore} points\n`;
+        report += `   ${rule.message}\n`;
+        if (rule.locations && rule.locations.length > 0) {
+          report += `   Locations: ${rule.locations.join(', ')}\n`;
+        }
+        report += `\n`;
       });
+
+      report += `\n${'='.repeat(80)}\n`;
+      report += `END OF REPORT\n`;
+
+      const blob = new Blob([report], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `safety-audit-${timestamp}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else if (safetyFactor.flags && safetyFactor.flags.length > 0) {
+      // Old system: export flags
+      const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+      let report = `SAFETY AUDIT REPORT\n`;
+      report += `Generated: ${new Date().toLocaleString()}\n`;
+      report += `Layout Score: ${score.percentage}% (${score.total}/${score.maxTotal} points)\n`;
+      report += `Safety Score: ${safetyFactor.score}/${safetyFactor.maxScore} points\n`;
+      report += `\n${'='.repeat(80)}\n\n`;
+
+      const activeFlags = safetyFactor.flags.filter(f => !f.isDismissed).sort(sortBySeverity);
+      if (activeFlags.length > 0) {
+        report += `ACTIVE SAFETY FLAGS (${activeFlags.length})\n`;
+        report += `${'='.repeat(80)}\n\n`;
+
+        ['HIGH', 'MEDIUM', 'LOW'].forEach(severity => {
+          const flagsOfSeverity = activeFlags.filter(f => f.severity === severity);
+          if (flagsOfSeverity.length > 0) {
+            report += `${severity} SEVERITY (${flagsOfSeverity.length})\n`;
+            report += `${'-'.repeat(80)}\n`;
+            flagsOfSeverity.forEach((flag, idx) => {
+              report += `${idx + 1}. ${flag.message}\n`;
+              report += `   Rule ID: ${flag.id}\n`;
+              report += `   Recommendation: ${flag.recommendation}\n`;
+              report += `   Point Deduction: -${flag.pointsDeduction}\n\n`;
+            });
+          }
+        });
+      }
+
+      const dismissedFlags = safetyFactor.flags.filter(f => f.isDismissed).sort(sortBySeverity);
+      if (dismissedFlags.length > 0) {
+        report += `\n${'='.repeat(80)}\n\n`;
+        report += `DISMISSED FLAGS (${dismissedFlags.length})\n`;
+        report += `${'='.repeat(80)}\n\n`;
+        dismissedFlags.forEach((flag, idx) => {
+          report += `${idx + 1}. [${flag.severity}] ${flag.message}\n`;
+          report += `   Rule ID: ${flag.id}\n`;
+          report += `   Note: Dismissed by user\n\n`;
+        });
+      }
+
+      report += `\n${'='.repeat(80)}\n`;
+      report += `END OF REPORT\n`;
+
+      const blob = new Blob([report], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `safety-audit-${timestamp}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
-
-    report += `\n${'='.repeat(80)}\n`;
-    report += `END OF REPORT\n`;
-
-    // Download as text file
-    const blob = new Blob([report], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `safety-audit-${timestamp}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -238,8 +300,56 @@ export function ScoringPanel() {
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="text-xs text-gray-700 mb-2">{factor.suggestion}</div>
 
-                    {/* Show flags if they exist */}
-                    {factor.flags && factor.flags.length > 0 && (
+                    {/* Show safety rules if they exist (new system) */}
+                    {factor.safetyRules && factor.safetyRules.length > 0 && (
+                      <>
+                        <div className="mb-3">
+                          <button
+                            onClick={exportSafetyReport}
+                            className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
+                          >
+                            <Download className="w-3 h-3" />
+                            Export Safety Report
+                          </button>
+                        </div>
+                        <div className="space-y-3 mt-3">
+                          {factor.safetyRules.map((rule, idx) => (
+                            <div
+                              key={idx}
+                              className={`border rounded p-3 text-xs ${
+                                rule.status === 'good' ? 'bg-green-50 border-green-300' :
+                                rule.status === 'warning' ? 'bg-orange-50 border-orange-300' :
+                                'bg-red-50 border-red-300'
+                              }`}
+                            >
+                              <div className="flex items-start gap-2 mb-2">
+                                {getStatusIcon(rule.status)}
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`font-bold ${getStatusColor(rule.status)}`}>
+                                      {rule.rule}
+                                    </span>
+                                    <span className={`font-medium ${getStatusColor(rule.status)}`}>
+                                      {rule.score}/{rule.maxScore} pts
+                                    </span>
+                                  </div>
+                                  <div className="text-gray-900 mb-2">{rule.message}</div>
+                                  {rule.locations && rule.locations.length > 0 && (
+                                    <div className="text-gray-600 text-xs">
+                                      <span className="font-semibold">Locations: </span>
+                                      {rule.locations.join(', ')}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Show flags if they exist (old system for non-safety factors) */}
+                    {factor.flags && factor.flags.length > 0 && !factor.safetyRules && (
                       <div className="space-y-2 mt-3">
                         {/* Active flags */}
                         {factor.flags.filter(f => !f.isDismissed).sort(sortBySeverity).map((flag) => (
@@ -305,8 +415,8 @@ export function ScoringPanel() {
                       </div>
                     )}
 
-                    {/* Show old-style details if they exist and no flags */}
-                    {factor.details && factor.details.length > 0 && (!factor.flags || factor.flags.length === 0) && (
+                    {/* Show old-style details if they exist and no flags or safety rules */}
+                    {factor.details && factor.details.length > 0 && (!factor.flags || factor.flags.length === 0) && !factor.safetyRules && (
                       <ul className="text-xs text-gray-600 space-y-1 pl-4 list-disc">
                         {factor.details.map((detail, idx) => (
                           <li key={idx}>{detail}</li>
@@ -320,8 +430,8 @@ export function ScoringPanel() {
           })}
         </div>
 
-        {/* Safety Audit Log */}
-        {safetyFactor && (safetyFactor.flags && safetyFactor.flags.length > 0) && (
+        {/* Safety Audit Log - Only show for old flag-based system */}
+        {safetyFactor && (safetyFactor.flags && safetyFactor.flags.length > 0) && !safetyFactor.safetyRules && (
           <div className="border-2 border-orange-300 rounded-lg bg-orange-50 mt-6">
             <div className="px-4 py-3 flex items-center justify-between">
               <button

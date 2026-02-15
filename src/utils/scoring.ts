@@ -1,5 +1,5 @@
-import { Activity, Corridor, Door, GridDimensions, SafetyFlag, VolumeTiming, Zone, ActivityRelationship } from '../types';
-import { runAllSafetyChecks } from './safetyAnalysis';
+import { Activity, Corridor, Door, GridDimensions, VolumeTiming, Zone, ActivityRelationship } from '../types';
+import { runAllSafetyChecks, SafetyRule } from './safetyAnalysis';
 
 export interface ScoreFactor {
   name: string;
@@ -17,6 +17,7 @@ export interface ScoreFactor {
     isDismissed: boolean;
     pointsDeduction: number;
   }>;
+  safetyRules?: SafetyRule[];
 }
 
 export interface LayoutScore {
@@ -466,50 +467,41 @@ function calculateSafetyFactor(
   squareSize: number,
   dismissedFlags: Set<string>
 ): ScoreFactor {
-  const safetyFlags = runAllSafetyChecks(gridDims, zones, corridors, doors, paintedSquares, activities, squareSize);
+  const safetyRules = runAllSafetyChecks(gridDims, zones, corridors, doors, paintedSquares, activities);
 
-  let score = 15;
-  const flagDetails: Array<{ id: string; severity: string; message: string; recommendation: string; isDismissed: boolean; pointsDeduction: number }> = [];
+  let totalScore = 0;
+  const maxScore = 15;
 
-  safetyFlags.forEach(flag => {
-    const isDismissed = dismissedFlags.has(flag.id);
-
-    flagDetails.push({
-      id: flag.id,
-      severity: flag.severity,
-      message: flag.finding,
-      recommendation: flag.recommendation,
-      isDismissed,
-      pointsDeduction: flag.pointsDeduction,
-    });
-
-    if (!isDismissed) {
-      score -= flag.pointsDeduction;
-    }
+  safetyRules.forEach(rule => {
+    totalScore += rule.score;
   });
 
-  // Sort flags by severity: HIGH > MEDIUM > LOW
-  const severityOrder: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-  flagDetails.sort((a, b) => {
-    const orderA = severityOrder[a.severity] ?? 999;
-    const orderB = severityOrder[b.severity] ?? 999;
-    return orderA - orderB;
-  });
+  const goodCount = safetyRules.filter(r => r.status === 'good').length;
+  const warningCount = safetyRules.filter(r => r.status === 'warning').length;
+  const criticalCount = safetyRules.filter(r => r.status === 'critical').length;
 
-  const activeFlags = flagDetails.filter(f => !f.isDismissed);
-  const highCount = activeFlags.filter(f => f.severity === 'HIGH').length;
-  const mediumCount = activeFlags.filter(f => f.severity === 'MEDIUM').length;
-  const lowCount = activeFlags.filter(f => f.severity === 'LOW').length;
+  let display = '';
+  if (criticalCount > 0) {
+    display = `${criticalCount} critical, ${warningCount} warning`;
+  } else if (warningCount > 0) {
+    display = `${warningCount} warning, ${goodCount} good`;
+  } else {
+    display = 'All safety checks passed';
+  }
 
   return {
     name: 'safety',
     label: 'Safety: Are people and equipment safe?',
-    score: Math.max(0, score),
-    maxScore: 15,
-    display: activeFlags.length > 0 ? `${highCount} HIGH, ${mediumCount} MEDIUM, ${lowCount} LOW` : 'No safety issues detected',
-    suggestion: activeFlags.length > 0 ? 'Review safety audit log and address high-severity issues' : 'Safety standards are met',
+    score: totalScore,
+    maxScore,
+    display,
+    suggestion: criticalCount > 0
+      ? 'Address critical safety issues first'
+      : warningCount > 0
+        ? 'Review warnings and consider improvements'
+        : 'Safety design is excellent',
     details: [],
-    flags: flagDetails,
+    safetyRules,
   };
 }
 
