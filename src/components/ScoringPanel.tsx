@@ -66,12 +66,24 @@ export function ScoringPanel() {
 
   const toggleFactor = (factorName: string) => {
     const newExpanded = new Set(expandedFactors);
+    const isExpanding = !newExpanded.has(factorName);
+
     if (newExpanded.has(factorName)) {
       newExpanded.delete(factorName);
     } else {
       newExpanded.add(factorName);
     }
     setExpandedFactors(newExpanded);
+
+    // Scroll expanded content into view
+    if (isExpanding) {
+      setTimeout(() => {
+        const element = document.getElementById(`factor-${factorName}-expanded`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 100);
+    }
   };
 
   const getPercentageColor = (percentage: number): string => {
@@ -304,7 +316,7 @@ export function ScoringPanel() {
                 </button>
 
                 {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div id={`factor-${factor.name}-expanded`} className="mt-4 pt-4 border-t border-gray-200">
                     <div className="text-xs text-gray-700 mb-2">{factor.suggestion}</div>
 
                     {/* Show safety rules if they exist (new system) */}
