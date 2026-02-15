@@ -270,7 +270,7 @@ export function ScoringPanel() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
           {score.factors.map((factor) => {
             const isExpanded = expandedFactors.has(factor.name);
-            const percentage = Math.round((factor.score / factor.maxScore) * 100);
+            const percentage = factor.maxScore > 0 ? Math.round(((factor.score || 0) / factor.maxScore) * 100) : 0;
 
             return (
               <div
@@ -333,7 +333,9 @@ export function ScoringPanel() {
                                       {rule.score}/{rule.maxScore} pts
                                     </span>
                                   </div>
-                                  <div className="text-gray-900 mb-2">{rule.message}</div>
+                                  <div className="text-gray-900 mb-2">
+                                    {rule.message || <span className="italic text-gray-500">No details available</span>}
+                                  </div>
                                   {rule.locations && rule.locations.length > 0 && (
                                     <div className="text-gray-600 text-xs">
                                       <span className="font-semibold">Locations: </span>

@@ -52,8 +52,8 @@ export function calculateLayoutScore(
 
   const factors = [flowDistance, closeness, departurePriority, spaceUtilization, pathClearance, bufferCapacity, safety];
 
-  const total = factors.reduce((sum, f) => sum + f.score, 0);
-  const maxTotal = factors.reduce((sum, f) => sum + f.maxScore, 0);
+  const total = factors.reduce((sum, f) => sum + (f.score || 0), 0);
+  const maxTotal = factors.reduce((sum, f) => sum + (f.maxScore || 0), 0);
   const percentage = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
 
   let verdict = '';
@@ -469,12 +469,8 @@ function calculateSafetyFactor(
 ): ScoreFactor {
   const safetyRules = runAllSafetyChecks(gridDims, zones, corridors, doors, paintedSquares, activities);
 
-  let totalScore = 0;
   const maxScore = 15;
-
-  safetyRules.forEach(rule => {
-    totalScore += rule.score;
-  });
+  const totalScore = safetyRules.reduce((sum, rule) => sum + (rule.score || 0), 0);
 
   const goodCount = safetyRules.filter(r => r.status === 'good').length;
   const warningCount = safetyRules.filter(r => r.status === 'warning').length;
@@ -492,7 +488,7 @@ function calculateSafetyFactor(
   return {
     name: 'safety',
     label: 'Safety: Are people and equipment safe?',
-    score: totalScore,
+    score: Math.max(0, Math.min(maxScore, totalScore || 0)),
     maxScore,
     display,
     suggestion: criticalCount > 0
