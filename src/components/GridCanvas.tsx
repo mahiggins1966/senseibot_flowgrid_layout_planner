@@ -105,6 +105,35 @@ export function GridCanvas() {
 
   const dragCleanupRef = useRef<(() => void) | null>(null);
 
+  // Helper: Convert screen coordinates to SVG grid coordinates
+  // Uses SVG's built-in matrix to avoid viewBox scaling bugs
+  // Reads viewport from store directly to avoid stale closures
+  const screenToGrid = (clientX: number, clientY: number): { row: number; col: number; svgX: number; svgY: number } => {
+    if (!svgRef.current) return { row: 0, col: 0, svgX: 0, svgY: 0 };
+    const vp = useGridStore.getState().viewport;
+    const ctm = svgRef.current.getScreenCTM();
+    if (!ctm) {
+      // Fallback if CTM unavailable
+      const rect = svgRef.current.getBoundingClientRect();
+      const svgX = (clientX - rect.left - vp.panX) / vp.zoom;
+      const svgY = (clientY - rect.top - vp.panY) / vp.zoom;
+      return { row: Math.floor((svgY - MARGIN) / CELL_SIZE), col: Math.floor((svgX - MARGIN) / CELL_SIZE), svgX, svgY };
+    }
+    const pt = svgRef.current.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const svgPt = pt.matrixTransform(ctm.inverse());
+    // svgPt is now in viewBox space; undo the viewport transform
+    const gridSpaceX = (svgPt.x - vp.panX) / vp.zoom;
+    const gridSpaceY = (svgPt.y - vp.panY) / vp.zoom;
+    return {
+      row: Math.floor((gridSpaceY - MARGIN) / CELL_SIZE),
+      col: Math.floor((gridSpaceX - MARGIN) / CELL_SIZE),
+      svgX: gridSpaceX,
+      svgY: gridSpaceY,
+    };
+  };
+
   useGestures(svgRef);
 
   const gridDimensions = useMemo(() => getGridDimensions(), [settings]);
@@ -671,12 +700,7 @@ export function GridCanvas() {
 
     if (!svgRef.current || (!draggingObject && !repositioningObject)) return;
 
-    const rect = svgRef.current.getBoundingClientRect();
-    const svgX = (e.clientX - rect.left - viewport.panX) / viewport.zoom;
-    const svgY = (e.clientY - rect.top - viewport.panY) / viewport.zoom;
-
-    const col = Math.floor((svgX - MARGIN) / CELL_SIZE);
-    const row = Math.floor((svgY - MARGIN) / CELL_SIZE);
+    const { row, col } = screenToGrid(e.clientX, e.clientY);
 
     if (col >= 0 && row >= 0 && col < gridDimensions.cols && row < gridDimensions.rows) {
       setDragPreviewPosition({ row, col, label: '' });
@@ -706,15 +730,13 @@ export function GridCanvas() {
       const origPos = { x: object.grid_x, y: object.grid_y };
       setOriginalPosition(origPos);
 
-      const rect = svgRef.current!.getBoundingClientRect();
-      const svgX = (e.clientX - rect.left - viewport.panX) / viewport.zoom;
-      const svgY = (e.clientY - rect.top - viewport.panY) / viewport.zoom;
+      const startGrid = screenToGrid(e.clientX, e.clientY);
 
       const objectX = MARGIN + object.grid_x * CELL_SIZE;
       const objectY = MARGIN + object.grid_y * CELL_SIZE;
 
-      const offsetX = svgX - objectX;
-      const offsetY = svgY - objectY;
+      const offsetX = startGrid.svgX - objectX;
+      const offsetY = startGrid.svgY - objectY;
 
       const dragOffsetData = { x: offsetX, y: offsetY };
 
@@ -729,12 +751,10 @@ export function GridCanvas() {
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
         if (!svgRef.current) return;
-        const rect = svgRef.current.getBoundingClientRect();
-        const svgX = (moveEvent.clientX - rect.left - viewport.panX) / viewport.zoom;
-        const svgY = (moveEvent.clientY - rect.top - viewport.panY) / viewport.zoom;
+        const moveGrid = screenToGrid(moveEvent.clientX, moveEvent.clientY);
 
-        const adjustedX = svgX - dragOffsetData.x;
-        const adjustedY = svgY - dragOffsetData.y;
+        const adjustedX = moveGrid.svgX - dragOffsetData.x;
+        const adjustedY = moveGrid.svgY - dragOffsetData.y;
 
         const col = Math.floor((adjustedX - MARGIN) / CELL_SIZE);
         const row = Math.floor((adjustedY - MARGIN) / CELL_SIZE);
@@ -1288,11 +1308,7 @@ export function GridCanvas() {
                   onMouseLeave={() => setHoveredZone(null)}
                   onMouseMove={(e) => {
                     if (!svgRef.current) return;
-                    const rect = svgRef.current.getBoundingClientRect();
-                    const svgX = (e.clientX - rect.left - viewport.panX) / viewport.zoom;
-                    const svgY = (e.clientY - rect.top - viewport.panY) / viewport.zoom;
-                    const col = Math.floor((svgX - MARGIN) / CELL_SIZE);
-                    const row = Math.floor((svgY - MARGIN) / CELL_SIZE);
+                    const { row, col } = screenToGrid(e.clientX, e.clientY);
                     if (col >= 0 && row >= 0 && col < gridDimensions.cols && row < gridDimensions.rows) {
                       const coordinate = getGridCoordinate(row, col);
                       setHoveredSquare({ row, col, label: coordinate.label });
@@ -1311,13 +1327,11 @@ export function GridCanvas() {
                       setOriginalPosition(origPos);
                       setMoveStatus({ name: zone.name, targetCell: getGridCoordinate(zone.grid_y, zone.grid_x, gridDimensions).label });
 
-                      const rect = svgRef.current!.getBoundingClientRect();
-                      const svgX = (e.clientX - rect.left - viewport.panX) / viewport.zoom;
-                      const svgY = (e.clientY - rect.top - viewport.panY) / viewport.zoom;
+                      const startGrid = screenToGrid(e.clientX, e.clientY);
 
                       const dragOffsetData = {
-                        x: svgX - (MARGIN + zone.grid_x * CELL_SIZE),
-                        y: svgY - (MARGIN + zone.grid_y * CELL_SIZE),
+                        x: startGrid.svgX - (MARGIN + zone.grid_x * CELL_SIZE),
+                        y: startGrid.svgY - (MARGIN + zone.grid_y * CELL_SIZE),
                       };
 
                       setDraggingZone(zone);
@@ -1327,12 +1341,10 @@ export function GridCanvas() {
 
                       const handleMouseMove = (moveEvent: MouseEvent) => {
                         if (!svgRef.current) return;
-                        const rect = svgRef.current.getBoundingClientRect();
-                        const svgX = (moveEvent.clientX - rect.left - viewport.panX) / viewport.zoom;
-                        const svgY = (moveEvent.clientY - rect.top - viewport.panY) / viewport.zoom;
+                        const moveGrid = screenToGrid(moveEvent.clientX, moveEvent.clientY);
 
-                        const adjustedX = svgX - dragOffsetData.x;
-                        const adjustedY = svgY - dragOffsetData.y;
+                        const adjustedX = moveGrid.svgX - dragOffsetData.x;
+                        const adjustedY = moveGrid.svgY - dragOffsetData.y;
 
                         const col = Math.round((adjustedX - MARGIN) / CELL_SIZE);
                         const row = Math.round((adjustedY - MARGIN) / CELL_SIZE);
@@ -1531,16 +1543,14 @@ export function GridCanvas() {
                             if (!svgRef.current) return;
 
                             // Capture initial mouse position in SVG coordinates
-                            const rect = svgRef.current.getBoundingClientRect();
-                            const svgX = (e.clientX - rect.left - viewport.panX) / viewport.zoom;
-                            const svgY = (e.clientY - rect.top - viewport.panY) / viewport.zoom;
+                            const startGrid = screenToGrid(e.clientX, e.clientY);
 
                             // Calculate offset from mouse to the edge position in SVG coordinates
                             const edgeSvgX = MARGIN + handle.edgeCol * CELL_SIZE;
                             const edgeSvgY = MARGIN + handle.edgeRow * CELL_SIZE;
 
-                            const offsetX = svgX - edgeSvgX;
-                            const offsetY = svgY - edgeSvgY;
+                            const offsetX = startGrid.svgX - edgeSvgX;
+                            const offsetY = startGrid.svgY - edgeSvgY;
 
                             const dragOffsetData = { x: offsetX, y: offsetY };
                             setDragOffset(dragOffsetData);
@@ -1551,12 +1561,10 @@ export function GridCanvas() {
 
                             const handleMouseMove = (moveEvent: MouseEvent) => {
                               if (!svgRef.current) return;
-                              const rect = svgRef.current.getBoundingClientRect();
-                              const svgX = (moveEvent.clientX - rect.left - viewport.panX) / viewport.zoom;
-                              const svgY = (moveEvent.clientY - rect.top - viewport.panY) / viewport.zoom;
+                              const moveGrid = screenToGrid(moveEvent.clientX, moveEvent.clientY);
 
-                              const adjustedX = svgX - dragOffsetData.x;
-                              const adjustedY = svgY - dragOffsetData.y;
+                              const adjustedX = moveGrid.svgX - dragOffsetData.x;
+                              const adjustedY = moveGrid.svgY - dragOffsetData.y;
 
                               const col = Math.round((adjustedX - MARGIN) / CELL_SIZE);
                               const row = Math.round((adjustedY - MARGIN) / CELL_SIZE);
@@ -1804,11 +1812,7 @@ export function GridCanvas() {
                   opacity="0.9"
                   onMouseMove={(e) => {
                     if (!svgRef.current) return;
-                    const rect = svgRef.current.getBoundingClientRect();
-                    const svgX = (e.clientX - rect.left - viewport.panX) / viewport.zoom;
-                    const svgY = (e.clientY - rect.top - viewport.panY) / viewport.zoom;
-                    const col = Math.floor((svgX - MARGIN) / CELL_SIZE);
-                    const row = Math.floor((svgY - MARGIN) / CELL_SIZE);
+                    const { row, col } = screenToGrid(e.clientX, e.clientY);
                     if (col >= 0 && row >= 0 && col < gridDimensions.cols && row < gridDimensions.rows) {
                       const coordinate = getGridCoordinate(row, col);
                       setHoveredSquare({ row, col, label: coordinate.label });
@@ -1886,11 +1890,7 @@ export function GridCanvas() {
                   className="cursor-pointer"
                   onMouseMove={(e) => {
                     if (!svgRef.current) return;
-                    const rect = svgRef.current.getBoundingClientRect();
-                    const svgX = (e.clientX - rect.left - viewport.panX) / viewport.zoom;
-                    const svgY = (e.clientY - rect.top - viewport.panY) / viewport.zoom;
-                    const col = Math.floor((svgX - MARGIN) / CELL_SIZE);
-                    const row = Math.floor((svgY - MARGIN) / CELL_SIZE);
+                    const { row, col } = screenToGrid(e.clientX, e.clientY);
                     if (col >= 0 && row >= 0 && col < gridDimensions.cols && row < gridDimensions.rows) {
                       const coordinate = getGridCoordinate(row, col);
                       setHoveredSquare({ row, col, label: coordinate.label });
@@ -2017,11 +2017,7 @@ export function GridCanvas() {
                   className="cursor-pointer"
                   onMouseMove={(e) => {
                     if (!svgRef.current) return;
-                    const rect = svgRef.current.getBoundingClientRect();
-                    const svgX = (e.clientX - rect.left - viewport.panX) / viewport.zoom;
-                    const svgY = (e.clientY - rect.top - viewport.panY) / viewport.zoom;
-                    const col = Math.floor((svgX - MARGIN) / CELL_SIZE);
-                    const row = Math.floor((svgY - MARGIN) / CELL_SIZE);
+                    const { row, col } = screenToGrid(e.clientX, e.clientY);
                     if (col >= 0 && row >= 0 && col < gridDimensions.cols && row < gridDimensions.rows) {
                       const coordinate = getGridCoordinate(row, col);
                       setHoveredSquare({ row, col, label: coordinate.label });
