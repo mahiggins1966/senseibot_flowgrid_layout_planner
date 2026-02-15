@@ -301,7 +301,7 @@ export function ScoringPanel() {
                     <div className="text-xs text-gray-700 mb-2">{factor.suggestion}</div>
 
                     {/* Show safety rules if they exist (new system) */}
-                    {factor.safetyRules && factor.safetyRules.length > 0 && (
+                    {factor.name === 'safety' && factor.safetyRules && factor.safetyRules.length > 0 && (
                       <>
                         <div className="mb-3">
                           <button
