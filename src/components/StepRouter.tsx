@@ -526,7 +526,65 @@ export function StepRouter({
                                     </div>
                                   ))}
 
-                                  {/* Safety flags */}
+                                  {/* Safety Rules (new rule-based system) */}
+                                  {factor.name === 'safety' && factor.safetyRules && factor.safetyRules.length > 0 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      {factor.safetyRules.map((rule: any, ruleIdx: number) => {
+                                        const isGood = rule.status === 'good';
+                                        const statusIcon = rule.score >= rule.maxScore ? '✓' : rule.score === 0 ? '✗' : '⚠';
+                                        const statusColor = rule.score >= rule.maxScore ? '#22c55e' : rule.score === 0 ? '#ef4444' : '#f59e0b';
+                                        const borderColor = rule.score >= rule.maxScore ? '#22c55e' : rule.score === 0 ? '#ef4444' : '#f59e0b';
+                                        return (
+                                          <div
+                                            key={ruleIdx}
+                                            style={{
+                                              borderLeft: `3px solid ${borderColor}`,
+                                              padding: '8px 12px',
+                                              backgroundColor: isGood ? '#f0fdf4' : '#f9fafb',
+                                              opacity: isGood ? 0.8 : 1,
+                                            }}
+                                          >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span style={{ fontSize: '14px' }}>{statusIcon}</span>
+                                                <span style={{ fontWeight: 600, fontSize: '13px', color: '#1f2937' }}>{rule.rule}</span>
+                                              </div>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontWeight: 600, fontSize: '13px', color: statusColor }}>
+                                                  {rule.score} / {rule.maxScore}
+                                                </span>
+                                                {!isGood && (
+                                                  <button
+                                                    onClick={(e: React.MouseEvent) => {
+                                                      e.stopPropagation();
+                                                    }}
+                                                    style={{
+                                                      fontSize: '11px',
+                                                      color: '#9ca3af',
+                                                      background: 'none',
+                                                      border: 'none',
+                                                      cursor: 'pointer',
+                                                      textDecoration: 'underline',
+                                                    }}
+                                                  >Dismiss</button>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: isGood ? '#6b7280' : '#4b5563', paddingLeft: '20px' }}>
+                                              {rule.message || 'No details available'}
+                                            </div>
+                                            {rule.locations && rule.locations.length > 0 && (
+                                              <div style={{ fontSize: '11px', color: '#9ca3af', paddingLeft: '20px', marginTop: '2px' }}>
+                                                Locations: {rule.locations.join(', ')}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  {/* Safety flags (old flag system for non-safety factors) */}
                                   {factor.flags && factor.flags.filter(f => !f.isDismissed).map((flag) => (
                                     <div
                                       key={flag.id}
