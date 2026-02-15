@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { CheckCircle, Circle, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, Circle } from 'lucide-react';
 import { useGridStore } from '../store/gridStore';
 import { Activity } from '../types';
 
@@ -24,7 +24,7 @@ export function ActivityZoneDrawer() {
     getGridDimensions,
   } = useGridStore();
 
-  const [workAreasOpen, setWorkAreasOpen] = useState(true);
+  // workAreasOpen state removed — parent <details> in StepRouter handles collapsing
   const [placementFeedback, setPlacementFeedback] = useState<Array<{
     message: string;
     type: 'success' | 'warning';
@@ -342,25 +342,6 @@ export function ActivityZoneDrawer() {
   return (
     <div className="space-y-4">
       <div>
-        <button
-          onClick={() => setWorkAreasOpen(!workAreasOpen)}
-          className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors rounded-lg mb-3"
-        >
-          <h3 className="font-semibold text-gray-900">Draw Work Areas</h3>
-          <div className="flex items-center gap-3">
-            <div className="text-sm text-gray-600">
-              {placedCount} of {totalCount} placed
-            </div>
-            {workAreasOpen ? (
-              <ChevronUp className="w-5 h-5 text-gray-600" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-gray-600" />
-            )}
-          </div>
-        </button>
-
-        {workAreasOpen && (
-          <>
         {isDrawingZone && selectedActivityForZone && (
           <div className="mb-3 p-4 bg-green-100 border-4 border-green-600 rounded-lg shadow-lg">
             <div className="flex items-center justify-between mb-3">
@@ -655,8 +636,6 @@ export function ActivityZoneDrawer() {
           ))}
         </div>
       )}
-      </>
-        )}
       </div>
     </div>
   );

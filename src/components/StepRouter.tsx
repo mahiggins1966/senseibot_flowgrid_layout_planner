@@ -223,11 +223,14 @@ export function StepRouter({
                       </p>
                     </div>
                     <div className="space-y-4">
-                      <details open>
-                        <summary style={{ fontWeight: 'bold', cursor: 'pointer', padding: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', marginBottom: '8px' }}>
-                          Draw Work Areas
+                      <details>
+                        <summary style={{ fontWeight: 'bold', cursor: 'pointer', padding: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Draw Work Areas</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#6b7280' }}>
+                            {zones.filter(z => z.activity_id).length} of {activities.length} placed
+                          </span>
                         </summary>
-                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                           <ActivityZoneDrawer />
                         </div>
                       </details>
@@ -242,8 +245,11 @@ export function StepRouter({
                       </details>
 
                       <details>
-                        <summary style={{ fontWeight: 'bold', cursor: 'pointer', padding: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', marginBottom: '8px' }}>
-                          Draw Corridors and Paths
+                        <summary style={{ fontWeight: 'bold', cursor: 'pointer', padding: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Draw Corridors and Paths</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#6b7280' }}>
+                            {corridors.length} {corridors.length === 1 ? 'path' : 'paths'}
+                          </span>
                         </summary>
                         <div style={{ padding: '8px' }}>
                           <CorridorDrawingPanel />
