@@ -751,6 +751,13 @@ export function GridCanvas() {
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
         if (!svgRef.current) return;
+
+        // Safety: if mouse button already released, force cleanup
+        if (moveEvent.buttons === 0) {
+          handleMouseUp();
+          return;
+        }
+
         const moveGrid = screenToGrid(moveEvent.clientX, moveEvent.clientY);
 
         const adjustedX = moveGrid.svgX - dragOffsetData.x;
@@ -1341,6 +1348,13 @@ export function GridCanvas() {
 
                       const handleMouseMove = (moveEvent: MouseEvent) => {
                         if (!svgRef.current) return;
+
+                        // Safety: if mouse button already released, force cleanup
+                        if (moveEvent.buttons === 0) {
+                          handleMouseUp();
+                          return;
+                        }
+
                         const moveGrid = screenToGrid(moveEvent.clientX, moveEvent.clientY);
 
                         const adjustedX = moveGrid.svgX - dragOffsetData.x;
@@ -1561,6 +1575,13 @@ export function GridCanvas() {
 
                             const handleMouseMove = (moveEvent: MouseEvent) => {
                               if (!svgRef.current) return;
+
+                              // Safety: if mouse button already released, force cleanup
+                              if (moveEvent.buttons === 0) {
+                                handleMouseUp();
+                                return;
+                              }
+
                               const moveGrid = screenToGrid(moveEvent.clientX, moveEvent.clientY);
 
                               const adjustedX = moveGrid.svgX - dragOffsetData.x;
