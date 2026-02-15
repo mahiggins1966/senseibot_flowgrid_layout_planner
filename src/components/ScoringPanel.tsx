@@ -312,40 +312,53 @@ export function ScoringPanel() {
                             Export Safety Report
                           </button>
                         </div>
-                        <div className="space-y-3 mt-3">
-                          {factor.safetyRules.map((rule, idx) => (
-                            <div
-                              key={idx}
-                              className={`border rounded p-3 text-xs ${
-                                rule.status === 'good' ? 'bg-green-50 border-green-300' :
-                                rule.status === 'warning' ? 'bg-orange-50 border-orange-300' :
-                                'bg-red-50 border-red-300'
-                              }`}
-                            >
-                              <div className="flex items-start gap-2 mb-2">
-                                {getStatusIcon(rule.status)}
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between mb-1">
-                                    <span className={`font-bold ${getStatusColor(rule.status)}`}>
-                                      {rule.rule}
-                                    </span>
-                                    <span className={`font-medium ${getStatusColor(rule.status)}`}>
-                                      {rule.score}/{rule.maxScore} pts
-                                    </span>
-                                  </div>
-                                  <div className="text-gray-900 mb-2">
-                                    {rule.message || <span className="italic text-gray-500">No details available</span>}
-                                  </div>
-                                  {rule.locations && rule.locations.length > 0 && (
-                                    <div className="text-gray-600 text-xs">
-                                      <span className="font-semibold">Locations: </span>
-                                      {rule.locations.join(', ')}
+                        <div className="space-y-0 mt-3 border-t border-gray-200">
+                          {factor.safetyRules.map((rule, idx) => {
+                            const needsDismiss = rule.status === 'warning' || rule.status === 'critical';
+                            const isGood = rule.status === 'good';
+
+                            return (
+                              <div
+                                key={idx}
+                                className={`py-2 border-b border-gray-200 ${isGood ? 'opacity-70' : ''}`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  {getStatusIcon(rule.status)}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-3 mb-1">
+                                      <span className={`font-semibold text-sm ${isGood ? 'text-gray-700' : 'text-gray-900'}`}>
+                                        {rule.rule}
+                                      </span>
+                                      <span className={`font-semibold text-sm whitespace-nowrap ${getStatusColor(rule.status)}`}>
+                                        {rule.score} / {rule.maxScore}
+                                      </span>
                                     </div>
+                                    <div className={`text-xs leading-relaxed ${isGood ? 'text-gray-500' : 'text-gray-700'}`}>
+                                      {rule.message || <span className="italic text-gray-400">No details available</span>}
+                                      {rule.locations && rule.locations.length > 0 && (
+                                        <span className="block mt-1">
+                                          <span className="font-medium">Locations: </span>
+                                          {rule.locations.join(', ')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {needsDismiss && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Note: Dismiss functionality would need to be implemented
+                                        console.log('Dismiss rule:', rule.rule);
+                                      }}
+                                      className="px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors whitespace-nowrap"
+                                    >
+                                      Dismiss
+                                    </button>
                                   )}
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </>
                     )}
