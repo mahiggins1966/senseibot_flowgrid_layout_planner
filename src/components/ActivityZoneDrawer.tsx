@@ -390,6 +390,9 @@ export function ActivityZoneDrawer() {
               <div className="text-sm text-gray-600 mt-2 font-medium">
                 Total: {zoneDrawWidth * zoneDrawHeight * settings.squareSize * settings.squareSize} sq ft
               </div>
+              <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-200">
+                Click grid to place · Drag edges to resize · Hold & drag to move · Esc to cancel
+              </div>
             </div>
 
             {/* Closeness Relationships */}
@@ -593,31 +596,7 @@ export function ActivityZoneDrawer() {
           </div>
         )}
 
-      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <div className="text-xs text-blue-600 font-medium">Areas Placed</div>
-          <div className="text-2xl font-bold text-blue-900 mt-1">
-            {placedCount} <span className="text-sm text-blue-600">/ {totalCount}</span>
-          </div>
-        </div>
 
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-          <div className="text-xs text-yellow-600 font-medium">Unassigned Squares</div>
-          <div className="text-2xl font-bold text-yellow-900 mt-1">
-            {unassigned} <span className="text-sm text-yellow-600">/ {availableSquares}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900">
-        <p className="font-medium mb-1">How to place zones:</p>
-        <ul className="space-y-1 list-disc pl-4">
-          <li>Click an activity, set size, then click grid to place (one-click method)</li>
-          <li>After placing, drag edges/corners to resize, or drag center to move</li>
-          <li>Zones cannot be placed on permanent (dark gray) squares</li>
-          <li>Press Esc to cancel drawing mode</li>
-        </ul>
-      </div>
 
       {/* Placement Feedback */}
       {placementFeedback.length > 0 && (
