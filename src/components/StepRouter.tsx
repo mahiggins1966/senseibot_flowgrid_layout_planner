@@ -557,6 +557,7 @@ export function StepRouter({
                                                   <button
                                                     onClick={(e: React.MouseEvent) => {
                                                       e.stopPropagation();
+                                                      dismissFlag(`safety-${rule.rule.toLowerCase().replace(/\s+/g, '-')}`);
                                                     }}
                                                     style={{
                                                       fontSize: '11px',

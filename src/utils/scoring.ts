@@ -469,6 +469,16 @@ function calculateSafetyFactor(
 ): ScoreFactor {
   const safetyRules = runAllSafetyChecks(gridDims, zones, corridors, doors, paintedSquares, activities);
 
+  // Respect dismissed safety flags — award full points for dismissed rules
+  safetyRules.forEach(rule => {
+    const flagId = `safety-${rule.rule.toLowerCase().replace(/\s+/g, '-')}`;
+    if (dismissedFlags.has(flagId)) {
+      rule.score = rule.maxScore;
+      rule.status = 'good';
+      rule.message = `${rule.message} (Dismissed by user)`;
+    }
+  });
+
   const maxScore = 15;
   const totalScore = safetyRules.reduce((sum, rule) => sum + (rule.score || 0), 0);
 
