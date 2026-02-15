@@ -450,7 +450,7 @@ export function ActivityZoneDrawer() {
           </div>
         )}
 
-        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+        <div className="space-y-2">
           {activities.map(activity => {
             const zone = activityZoneMap.get(activity.id);
             const isPlaced = !!zone;
