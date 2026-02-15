@@ -1102,80 +1102,40 @@ export function GridCanvas() {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
     >
+      {/* Compact mode indicator pills — no animation, no redundant buttons */}
       {isDrawingZone && selectedActivityForZone && (() => {
         const activity = activities.find(a => a.id === selectedActivityForZone);
         return (
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-600 text-white px-8 py-4 rounded-xl shadow-2xl border-4 border-green-700 animate-pulse min-w-[600px]">
-            <div className="text-center">
-              <div className="text-2xl font-bold mb-2">PLACING: {activity?.name || 'Zone'}</div>
-              <div className="text-lg font-medium">Click anywhere on the grid to place this {zoneDrawWidth} × {zoneDrawHeight} zone</div>
-              <div className="text-base mt-2 opacity-90">Press Escape to cancel</div>
-            </div>
+          <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/85 backdrop-blur text-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+            <span><strong>{activity?.name || 'Zone'}</strong> ({zoneDrawWidth}×{zoneDrawHeight}) — click to place · Esc to cancel</span>
           </div>
         );
       })()}
 
       {paintMode && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg border-2 border-blue-700">
-          <div className="flex items-center gap-3">
-            <div className="font-semibold">
-              Paint Mode Active: {paintMode === 'permanent' ? 'Permanent' : paintMode === 'semi-fixed' ? 'Semi-Fixed' : 'Clear'}
-            </div>
-            <div className="text-sm opacity-90">Click and drag to paint grid squares • Press Escape to exit</div>
-          </div>
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/85 backdrop-blur text-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+          <span><strong>{paintMode === 'permanent' ? 'Permanent' : paintMode === 'semi-fixed' ? 'Semi-Fixed' : 'Clear'}</strong> — click & drag to paint · Esc to exit</span>
         </div>
       )}
 
-      {isDrawingCorridor && selectedCorridorType && !corridorDrawStart && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-amber-600 text-white px-8 py-4 rounded-xl shadow-2xl border-4 border-amber-700 animate-pulse min-w-[600px]">
-          <div className="text-center">
-            <div className="text-2xl font-bold mb-2">
-              Drawing: {selectedCorridorType === 'pedestrian' ? 'Pedestrian Walkway' : 'Forklift / Cart Path'}
-            </div>
-            <div className="text-lg font-medium">Click to set start point</div>
-            <div className="text-base mt-2 opacity-90">Press Escape to cancel</div>
-            <button
-              onClick={() => {
-                setIsDrawingCorridor(false);
-                setCorridorDrawStart(null);
-                setSelectedCorridorType(null);
-              }}
-              className="mt-3 bg-white text-amber-700 font-bold px-6 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Cancel Drawing
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isDrawingCorridor && selectedCorridorType && corridorDrawStart && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-amber-600 text-white px-8 py-4 rounded-xl shadow-2xl border-4 border-amber-700 animate-pulse min-w-[600px]">
-          <div className="text-center">
-            <div className="text-2xl font-bold mb-2">
-              Drawing: {selectedCorridorType === 'pedestrian' ? 'Pedestrian Walkway' : 'Forklift / Cart Path'}
-            </div>
-            <div className="text-lg font-medium">Move cursor and click to set end point</div>
-            <div className="text-base mt-2 opacity-90">Press Escape to cancel</div>
-            <button
-              onClick={() => {
-                setIsDrawingCorridor(false);
-                setCorridorDrawStart(null);
-                setSelectedCorridorType(null);
-              }}
-              className="mt-3 bg-white text-amber-700 font-bold px-6 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Cancel Drawing
-            </button>
-          </div>
+      {isDrawingCorridor && selectedCorridorType && (
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/85 backdrop-blur text-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${selectedCorridorType === 'pedestrian' ? 'bg-green-400' : 'bg-amber-400'}`} />
+          <span>
+            <strong>{selectedCorridorType === 'pedestrian' ? 'Pedestrian Walkway' : 'Forklift / Cart Path'}</strong>
+            {' — '}
+            {!corridorDrawStart ? 'click start point' : 'click end point'}
+            {' · Esc to cancel'}
+          </span>
         </div>
       )}
 
       {isAddingDoor && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-orange-600 text-white px-6 py-3 rounded-lg shadow-lg border-2 border-orange-700">
-          <div className="flex items-center gap-3">
-            <div className="font-semibold">Door Placement Mode Active</div>
-            <div className="text-sm opacity-90">Click on outer edge squares to place a door • Press Escape to exit</div>
-          </div>
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/85 backdrop-blur text-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-orange-400 shrink-0" />
+          <span><strong>Door Placement</strong> — click outer edge squares · Esc to cancel</span>
         </div>
       )}
 
