@@ -36,11 +36,11 @@ function App() {
   };
 
   // Dashboard → Editor (or Home → Editor shortcut)
-  const handleOpenLayout = (projectId: string, layoutId: string) => {
+  const handleOpenLayout = (projectId: string, layoutId: string, startStep?: '2a' | '2f') => {
     setActiveProjectId(projectId);
     setActiveProject(projectId);
     setActiveLayout(layoutId);
-    setCurrentSubStep('2a');
+    setCurrentSubStep(startStep || '2a');
     setView('editor');
   };
 

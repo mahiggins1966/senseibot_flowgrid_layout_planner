@@ -31,7 +31,7 @@ interface FoundationSummary {
 
 interface ProjectDashboardProps {
   projectId: string;
-  onOpenLayout: (projectId: string, layoutId: string) => void;
+  onOpenLayout: (projectId: string, layoutId: string, startStep?: '2a' | '2f') => void;
   onBackToHome: () => void;
 }
 
@@ -91,7 +91,8 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
     }
 
     if (data) {
-      setLayouts(prev => [...prev, data]);
+      // Open it straight to the layout step
+      onOpenLayout(projectId, data.id, '2f');
     }
   };
 
