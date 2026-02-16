@@ -152,6 +152,10 @@ export const useGridStore = create<GridStore>((set, get) => ({
     facilityHeight: 155,
     squareSize: 5,
     measurementSystem: 'US',
+    typicalFlowUnit: 'box',
+    unitFootprintSqFt: 4,
+    stackingHeight: 1,
+    accessFactor: 1.3,
   },
   viewport: {
     zoom: 1,
@@ -489,6 +493,10 @@ export const useGridStore = create<GridStore>((set, get) => ({
           secondaryFlowUnitCustom: data.secondary_flow_unit_custom,
           largestVehicleName: data.largest_vehicle_name,
           largestVehicleCapacity: data.largest_vehicle_capacity,
+          typicalFlowUnit: data.typical_flow_unit,
+          unitFootprintSqFt: data.unit_footprint_sqft,
+          stackingHeight: data.stacking_height,
+          accessFactor: data.access_factor,
         },
         stepCompletion: {
           step1: data.step1_completed,
@@ -519,6 +527,10 @@ export const useGridStore = create<GridStore>((set, get) => ({
       secondary_flow_unit_custom: state.settings.secondaryFlowUnitCustom,
       largest_vehicle_name: state.settings.largestVehicleName,
       largest_vehicle_capacity: state.settings.largestVehicleCapacity,
+      typical_flow_unit: state.settings.typicalFlowUnit,
+      unit_footprint_sqft: state.settings.unitFootprintSqFt,
+      stacking_height: state.settings.stackingHeight,
+      access_factor: state.settings.accessFactor,
       updated_at: new Date().toISOString(),
     };
 

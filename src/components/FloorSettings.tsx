@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useGridStore } from '../store/gridStore';
-import { US_SQUARE_SIZE_OPTIONS, METRIC_SQUARE_SIZE_OPTIONS, DimensionUnit, MeasurementSystem } from '../types';
+import { US_SQUARE_SIZE_OPTIONS, METRIC_SQUARE_SIZE_OPTIONS, DimensionUnit, MeasurementSystem, UNIT_FOOTPRINT_OPTIONS, STACKING_HEIGHT_OPTIONS, ACCESS_FACTOR_OPTIONS } from '../types';
 import { DoorControls } from './DoorControls';
+import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 
 const FEET_TO_METERS = 0.3048;
 const METERS_TO_FEET = 3.28084;
@@ -67,6 +68,7 @@ export function FloorSettings() {
 
   const [editingWidth, setEditingWidth] = useState<string | null>(null);
   const [editingHeight, setEditingHeight] = useState<string | null>(null);
+  const [zoneSizingExpanded, setZoneSizingExpanded] = useState(false);
 
   const handleWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9.]/g, '');
@@ -107,6 +109,36 @@ export function FloorSettings() {
   const handleSquareSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = parseFloat(e.target.value);
     updateSettings({ squareSize: value });
+  };
+
+  const handleTypicalFlowUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    const selectedOption = UNIT_FOOTPRINT_OPTIONS.find(opt => opt.value === value);
+    if (selectedOption && value !== 'custom') {
+      updateSettings({
+        typicalFlowUnit: value,
+        unitFootprintSqFt: selectedOption.sqFt
+      });
+    } else {
+      updateSettings({ typicalFlowUnit: value });
+    }
+  };
+
+  const handleStackingHeightChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = parseInt(e.target.value);
+    updateSettings({ stackingHeight: value });
+  };
+
+  const handleAccessFactorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = parseFloat(e.target.value);
+    updateSettings({ accessFactor: value });
+  };
+
+  const handleCustomUnitFootprintChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value) && value > 0) {
+      updateSettings({ unitFootprintSqFt: value });
+    }
   };
 
   const squareOptions = settings.measurementSystem === 'US'
@@ -244,6 +276,105 @@ export function FloorSettings() {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="border border-gray-200 rounded-md">
+        <button
+          onClick={() => setZoneSizingExpanded(!zoneSizingExpanded)}
+          className="w-full px-3 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">Zone Sizing Assumptions</span>
+            <Info className="w-4 h-4 text-gray-400" />
+          </div>
+          {zoneSizingExpanded ? (
+            <ChevronUp className="w-4 h-4 text-gray-500" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-gray-500" />
+          )}
+        </button>
+        {zoneSizingExpanded && (
+          <div className="px-3 pb-3 space-y-4 border-t border-gray-200 pt-3">
+            <p className="text-xs text-gray-500">
+              These settings help the tool recommend minimum zone sizes when you place areas in Step 2F.
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Typical Flow Unit
+              </label>
+              <select
+                value={settings.typicalFlowUnit || 'box'}
+                onChange={handleTypicalFlowUnitChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+              >
+                {UNIT_FOOTPRINT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {settings.typicalFlowUnit === 'custom' ? (
+                <div className="mt-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={settings.unitFootprintSqFt || 0}
+                    onChange={handleCustomUnitFootprintChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    placeholder="Enter sq ft per unit"
+                  />
+                </div>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">
+                  {UNIT_FOOTPRINT_OPTIONS.find(opt => opt.value === (settings.typicalFlowUnit || 'box'))?.description} ({settings.unitFootprintSqFt || 4} sq ft each)
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Stacking Height
+              </label>
+              <select
+                value={settings.stackingHeight || 1}
+                onChange={handleStackingHeightChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+              >
+                {STACKING_HEIGHT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Aisle / Access Factor
+              </label>
+              <select
+                value={settings.accessFactor || 1.3}
+                onChange={handleAccessFactorChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+              >
+                {ACCESS_FACTOR_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="pt-2 border-t border-gray-200">
+              <p className="text-xs font-medium text-gray-700">Quick Preview</p>
+              <p className="text-xs text-gray-600 mt-1">
+                1 unit = {((settings.unitFootprintSqFt || 4) * (settings.accessFactor || 1.3) / (settings.stackingHeight || 1)).toFixed(1)} sq ft on the floor
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="pt-3 border-t border-gray-200">

@@ -16,6 +16,10 @@ export interface GridSettings {
   secondaryFlowUnitCustom?: string;
   largestVehicleName?: string;
   largestVehicleCapacity?: number;
+  typicalFlowUnit?: string;
+  unitFootprintSqFt?: number;
+  stackingHeight?: number;
+  accessFactor?: number;
 }
 
 export type MeasurementSystem = 'US' | 'Metric';
@@ -50,6 +54,28 @@ export const METRIC_SQUARE_SIZE_OPTIONS = [
 
 export type SquareSize = typeof US_SQUARE_SIZE_OPTIONS[number]['value'] | typeof METRIC_SQUARE_SIZE_OPTIONS[number]['value'];
 export type DimensionUnit = 'feet' | 'inches' | 'meters' | 'millimeters';
+
+export const UNIT_FOOTPRINT_OPTIONS = [
+  { value: 'pallet', label: 'Pallet (48" × 40")', description: '~4\'×3\' — standard wooden pallet', sqFt: 13.3 },
+  { value: 'box', label: 'Box (24" × 24")', description: '~2\'×2\' — standard shipping boxes', sqFt: 4 },
+  { value: 'tote', label: 'Tote (18" × 12")', description: '~1.5\'×1\' — plastic tote bins', sqFt: 1.5 },
+  { value: 'custom', label: 'Custom', description: 'Enter your own sq ft value', sqFt: 0 },
+] as const;
+
+export const STACKING_HEIGHT_OPTIONS = [
+  { value: 1, label: 'Floor only (1 unit high)' },
+  { value: 2, label: 'Two high (2 units)' },
+  { value: 3, label: 'Three high (3 units)' },
+  { value: 4, label: 'Four high (4 units)' },
+  { value: 5, label: 'Five high (5 units)' },
+] as const;
+
+export const ACCESS_FACTOR_OPTIONS = [
+  { value: 1.0, label: '1.0 — Very tight (no aisle space)' },
+  { value: 1.3, label: '1.3 — Moderate (recommended)' },
+  { value: 1.5, label: '1.5 — Comfortable (wider aisles)' },
+  { value: 2.0, label: '2.0 — Spacious (extra buffer)' },
+] as const;
 
 export interface CustomObject {
   id: string;
