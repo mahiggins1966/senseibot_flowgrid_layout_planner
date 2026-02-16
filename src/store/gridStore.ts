@@ -50,15 +50,8 @@ interface GridStore {
   sidebarOpen: boolean;
   hoveredSquare: { row: number; col: number; label: string } | null;
   settingsPanelOpen: boolean;
-  stepCompletion: {
-    step1: boolean;
-    step2: boolean;
-    step3: boolean;
-    step4: boolean;
-  };
   paintMode: PaintMode;
   paintedSquares: Map<string, PaintedSquare>;
-  currentStep: number;
   currentSubStep: SubStep;
   safetyOverlayEnabled: boolean;
   dismissedFlags: Set<string>;
@@ -110,7 +103,7 @@ interface GridStore {
   setSidebarOpen: (open: boolean) => void;
   setSettingsPanelOpen: (open: boolean) => void;
   setHoveredSquare: (square: { row: number; col: number; label: string } | null) => void;
-  completeStep: (step: 'step1' | 'step2' | 'step3' | 'step4') => void;
+
   setPaintMode: (mode: PaintMode) => void;
   setPaintedSquares: (squares: Map<string, PaintedSquare>) => void;
   paintSquare: (row: number, col: number) => void;
@@ -119,7 +112,7 @@ interface GridStore {
   getPaintedSquareCounts: () => { permanent: number; semFixed: number; available: number };
   loadSettings: () => Promise<void>;
   saveSettingsToDb: () => Promise<void>;
-  saveStepCompletionToDb: () => Promise<void>;
+
   setActivities: (activities: Activity[]) => void;
   addActivity: (activity: Activity) => void;
   updateActivity: (id: string, updates: Partial<Activity>) => void;
@@ -131,7 +124,6 @@ interface GridStore {
   setActivityRelationships: (relationships: ActivityRelationship[]) => void;
   updateRelationship: (activityAId: string, activityBId: string, rating: string, reason?: string) => void;
   loadActivityRelationships: () => Promise<void>;
-  setCurrentStep: (step: number) => void;
   setCurrentSubStep: (subStep: SubStep) => void;
   canInteractWithDoors: () => boolean;
   canInteractWithZones: () => boolean;
@@ -198,15 +190,8 @@ export const useGridStore = create<GridStore>((set, get) => ({
   sidebarOpen: true,
   settingsPanelOpen: true,
   hoveredSquare: null,
-  stepCompletion: {
-    step1: false,
-    step2: false,
-    step3: false,
-    step4: false,
-  },
   paintMode: null,
   paintedSquares: new Map(),
-  currentStep: 1,
   currentSubStep: '2a',
   safetyOverlayEnabled: false,
   dismissedFlags: new Set(),
@@ -408,12 +393,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
 
   setHoveredSquare: (square) => set({ hoveredSquare: square }),
 
-  completeStep: (step) => {
-    set((state) => ({
-      stepCompletion: { ...state.stepCompletion, [step]: true },
-    }));
-    get().saveStepCompletionToDb();
-  },
+
 
   setPaintMode: (mode) => set({ paintMode: mode }),
 
@@ -492,12 +472,6 @@ export const useGridStore = create<GridStore>((set, get) => ({
           stackingHeight: data.stacking_height,
           accessFactor: data.access_factor,
         },
-        stepCompletion: {
-          step1: data.step1_completed,
-          step2: data.step2_completed,
-          step3: data.step3_completed,
-          step4: data.step4_completed,
-        },
       });
     }
   },
@@ -542,33 +516,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
     }
   },
 
-  saveStepCompletionToDb: async () => {
-    const state = get();
 
-    const { data: existing } = await supabase
-      .from('app_settings')
-      .select('id')
-      .maybeSingle();
-
-    const completionData = {
-      step1_completed: state.stepCompletion.step1,
-      step2_completed: state.stepCompletion.step2,
-      step3_completed: state.stepCompletion.step3,
-      step4_completed: state.stepCompletion.step4,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (existing) {
-      const { error } = await supabase
-        .from('app_settings')
-        .update(completionData)
-        .eq('id', existing.id);
-
-      if (error) {
-        console.error('Error updating step completion:', error);
-      }
-    }
-  },
 
   setActivities: (activities) => set({ activities }),
 
@@ -740,28 +688,22 @@ export const useGridStore = create<GridStore>((set, get) => ({
     }
   },
 
-  setCurrentStep: (step) => set({ currentStep: step }),
-
   setCurrentSubStep: (subStep) => set({ currentSubStep: subStep }),
 
   canInteractWithDoors: () => {
-    const state = get();
-    return state.currentStep === 2 && state.currentSubStep === '2a';
+    return get().currentSubStep === '2a';
   },
 
   canInteractWithZones: () => {
-    const state = get();
-    return state.currentStep === 2 && state.currentSubStep === '2f';
+    return get().currentSubStep === '2f';
   },
 
   canInteractWithObjects: () => {
-    const state = get();
-    return state.currentStep === 2 && state.currentSubStep === '2f';
+    return get().currentSubStep === '2f';
   },
 
   canPaintSquares: () => {
-    const state = get();
-    return state.currentStep === 2 && state.currentSubStep === '2b';
+    return get().currentSubStep === '2b';
   },
 
   toggleSafetyOverlay: () => set((state) => ({ safetyOverlayEnabled: !state.safetyOverlayEnabled })),

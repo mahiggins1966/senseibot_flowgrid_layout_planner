@@ -8,8 +8,7 @@ import { useGridStore } from './store/gridStore';
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
 
 function App() {
-  const { loadSettings, loadActivities, loadVolumeTiming, loadActivityRelationships, stepCompletion, setCurrentStep: setStoreStep, setCurrentSubStep: setStoreSubStep } = useGridStore();
-  const [currentStep, setCurrentStep] = useState(1);
+  const { loadSettings, loadActivities, loadVolumeTiming, loadActivityRelationships, setCurrentSubStep: setStoreSubStep } = useGridStore();
   const [currentSubStep, setCurrentSubStep] = useState<SubStep>('2a');
 
   useEffect(() => {
@@ -20,64 +19,26 @@ function App() {
   }, [loadSettings, loadActivities, loadVolumeTiming, loadActivityRelationships]);
 
   useEffect(() => {
-    setStoreStep(currentStep);
-  }, [currentStep, setStoreStep]);
-
-  useEffect(() => {
     setStoreSubStep(currentSubStep);
   }, [currentSubStep, setStoreSubStep]);
-
-  useEffect(() => {
-    if (!stepCompletion.step1) {
-      setCurrentStep(1);
-    } else if (!stepCompletion.step2) {
-      setCurrentStep(2);
-    } else if (!stepCompletion.step3) {
-      setCurrentStep(3);
-    } else if (!stepCompletion.step4) {
-      setCurrentStep(4);
-    } else {
-      setCurrentStep(5);
-    }
-  }, [stepCompletion]);
-
-  const handleStepChange = (step: number) => {
-    setCurrentStep(step);
-    if (step === 2) {
-      setCurrentSubStep('2a');
-    }
-  };
 
   const handleSubStepChange = (subStep: SubStep) => {
     setCurrentSubStep(subStep);
   };
 
-  const handleStepComplete = () => {
-    if (currentStep < 5) {
-      setCurrentStep(currentStep + 1);
-      if (currentStep + 1 === 2) {
-        setCurrentSubStep('2a');
-      }
-    }
-  };
-
-  const needsGrid = currentStep === 2 && ['2a', '2b', '2f'].includes(currentSubStep);
+  const needsGrid = ['2a', '2b', '2f'].includes(currentSubStep);
 
   return (
     <div className="w-screen h-screen flex flex-col overflow-hidden">
       <StepBar
-        currentStep={currentStep}
         currentSubStep={currentSubStep}
-        onStepChange={handleStepChange}
         onSubStepChange={handleSubStepChange}
       />
 
       <div className="flex-1 overflow-hidden">
         <StepRouter
-          currentStep={currentStep}
           currentSubStep={currentSubStep}
           onSubStepChange={handleSubStepChange}
-          onStepComplete={handleStepComplete}
         />
       </div>
 
