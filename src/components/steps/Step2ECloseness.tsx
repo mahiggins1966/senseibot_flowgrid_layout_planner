@@ -14,8 +14,9 @@ export function Step2ECloseness({ onNext }: Step2EClosenessProps) {
             2E: Rate Which Areas Need to Be Close
           </h1>
           <p className="text-lg text-gray-600">
-            Some areas need to be near each other. Other areas should be kept apart. Rate each pair to
-            guide the layout optimization.
+            This step tells the layout tool which activity areas to place next to each other
+            and which ones to keep separated. The ratings you set here directly control
+            how the floor plan gets arranged in the next step.
           </p>
         </div>
 
