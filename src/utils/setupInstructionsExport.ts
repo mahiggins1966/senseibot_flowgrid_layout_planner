@@ -17,10 +17,11 @@ interface SetupData {
  * strips interactive attributes, and returns clean SVG markup.
  */
 function getCleanSvgMarkup(): string {
-  const svg = document.querySelector('svg');
+  const svg = document.querySelector('#flowgrid-canvas') as SVGSVGElement;
   if (!svg) return '';
 
   const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.removeAttribute('id');
 
   // Reset the viewport transform group to show the full grid
   const transformGroup = clone.querySelector('g');

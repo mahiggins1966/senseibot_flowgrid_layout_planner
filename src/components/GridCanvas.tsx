@@ -1140,6 +1140,7 @@ export function GridCanvas() {
       )}
 
       <svg
+        id="flowgrid-canvas"
         ref={svgRef}
         className={`w-full h-full ${
           paintMode ? 'cursor-pointer' : isDrawingZone ? 'cursor-crosshair' : isAddingDoor ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
