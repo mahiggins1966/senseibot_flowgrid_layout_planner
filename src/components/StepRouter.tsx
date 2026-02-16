@@ -13,6 +13,7 @@ import { ActivityZonePopup } from './ActivityZonePopup';
 import { CorridorPopup } from './CorridorPopup';
 import CorridorDrawingPanel from './CorridorDrawingPanel';
 import { useGridStore } from '../store/gridStore';
+import { supabase } from '../lib/supabase';
 import { calculateLayoutScore, LayoutScore } from '../utils/scoring';
 import { exportFloorPlanPDF } from '../utils/pdfExport';
 import { exportSetupInstructions } from '../utils/setupInstructionsExport';
@@ -66,6 +67,25 @@ export function StepRouter({
         dismissedFlags
       );
       setScoreData(score);
+
+      // Save score to layouts table so dashboard/home can show it
+      const { activeLayoutId, activeProjectId } = useGridStore.getState();
+      if (activeLayoutId) {
+        const now = new Date().toISOString();
+        supabase
+          .from('layouts')
+          .update({ score_percentage: score.percentage, updated_at: now })
+          .eq('id', activeLayoutId)
+          .then(({ error }) => {
+            if (error) console.error('Error saving score:', error);
+          });
+        // Also bump project updated_at
+        supabase
+          .from('projects')
+          .update({ updated_at: now })
+          .eq('id', activeProjectId)
+          .then(() => {});
+      }
 
       if (score.percentage > bestScore) {
         setBestScore(score.percentage);

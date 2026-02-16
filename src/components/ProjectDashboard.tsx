@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, Plus, Layers, Clock, Trash2, Play } from 'lucide-react';
+import { ArrowLeft, Plus, Layers, Clock, Trash2, Play, Pencil } from 'lucide-react';
 
 interface Layout {
   id: string;
@@ -187,13 +187,21 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
                   autoFocus
                 />
               ) : (
-                <h1
-                  className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
-                  onClick={() => { setEditingProjectName(true); setTempProjectName(project.name); }}
-                  title="Click to rename"
-                >
-                  {project.name}
-                </h1>
+                <div className="flex items-center gap-2 group/name">
+                  <h1
+                    className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                    onClick={() => { setEditingProjectName(true); setTempProjectName(project.name); }}
+                  >
+                    {project.name}
+                  </h1>
+                  <button
+                    onClick={() => { setEditingProjectName(true); setTempProjectName(project.name); }}
+                    className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors opacity-0 group-hover/name:opacity-100"
+                    title="Rename project"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                </div>
               )}
               <p className="text-sm text-gray-500 mt-1">
                 Created {formatDate(project.created_at)}
