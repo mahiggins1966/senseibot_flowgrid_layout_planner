@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { CheckCircle, Circle } from 'lucide-react';
 import { useGridStore } from '../store/gridStore';
 import { Activity } from '../types';
+import { calculateZoneSizing, SizingRecommendation } from '../utils/zoneSizing';
 
 export function ActivityZoneDrawer() {
   const {
@@ -24,7 +25,6 @@ export function ActivityZoneDrawer() {
     getGridDimensions,
   } = useGridStore();
 
-  // workAreasOpen state removed — parent <details> in StepRouter handles collapsing
   const [placementFeedback, setPlacementFeedback] = useState<Array<{
     message: string;
     type: 'success' | 'warning';
@@ -32,10 +32,59 @@ export function ActivityZoneDrawer() {
 
   const lastZoneCountRef = useRef(zones.length);
 
-  // Validate zone placement against closeness relationships
+  // Calculate recommended sizes using the sizing model
+  const sizingRecommendations = useMemo(() => {
+    return calculateZoneSizing(activities, volumeTiming, settings);
+  }, [activities, volumeTiming, settings]);
+
+  const getRecommendation = (activityId: string): SizingRecommendation | undefined => {
+    return sizingRecommendations.find(r => r.activityId === activityId);
+  };
+
+  // Convert recommended squares into width × height dimensions
+  const getRecommendedDimensions = (squares: number): { width: number; height: number } => {
+    if (squares <= 0) return { width: 3, height: 3 };
+    // Aim for aspect ratio ~1.3 (slightly wider than tall)
+    const targetAspect = 1.3;
+    let height = Math.max(2, Math.round(Math.sqrt(squares / targetAspect)));
+    let width = Math.max(2, Math.round(squares / height));
+    // Make sure we meet the minimum
+    while (width * height < squares) {
+      if (width <= height * targetAspect) {
+        width++;
+      } else {
+        height++;
+      }
+    }
+    return { width, height };
+  };
+
+  // Sort activities: unplaced first, then by recommended size (largest first), then placed
+  const sortedActivities = useMemo(() => {
+    return [...activities].sort((a, b) => {
+      const aPlaced = zones.some(z => z.activity_id === a.id);
+      const bPlaced = zones.some(z => z.activity_id === b.id);
+
+      // Placed activities go to bottom
+      if (aPlaced && !bPlaced) return 1;
+      if (!aPlaced && bPlaced) return -1;
+
+      // Among unplaced, sort by recommended squares descending (largest first)
+      const aRec = getRecommendation(a.id);
+      const bRec = getRecommendation(b.id);
+      const aSquares = aRec?.recommendedSquares ?? 0;
+      const bSquares = bRec?.recommendedSquares ?? 0;
+
+      if (aSquares !== bSquares) return bSquares - aSquares;
+
+      // Fall back to sort_order
+      return a.sort_order - b.sort_order;
+    });
+  }, [activities, zones, sizingRecommendations]);
+
+  // Validate zone placement against closeness relationships AND sizing
   useEffect(() => {
     if (zones.length > lastZoneCountRef.current) {
-      // A new zone was added
       const newZone = zones[zones.length - 1];
       if (!newZone.activity_id) {
         lastZoneCountRef.current = zones.length;
@@ -43,8 +92,27 @@ export function ActivityZoneDrawer() {
       }
 
       const feedback: Array<{ message: string; type: 'success' | 'warning' }> = [];
+      const newActivity = activities.find(a => a.id === newZone.activity_id);
+      const newActivityName = newActivity?.name || 'Zone';
 
-      // Find relationships for this activity
+      // Check sizing recommendation
+      const rec = getRecommendation(newZone.activity_id);
+      if (rec) {
+        const actualSquares = newZone.grid_width * newZone.grid_height;
+        if (actualSquares < rec.recommendedSquares) {
+          feedback.push({
+            message: `${newActivityName} is ${actualSquares} squares — recommended minimum is ${rec.recommendedSquares} based on ${rec.peakVolume} peak units`,
+            type: 'warning'
+          });
+        } else {
+          feedback.push({
+            message: `${newActivityName} meets recommended size (${actualSquares} ≥ ${rec.recommendedSquares} squares)`,
+            type: 'success'
+          });
+        }
+      }
+
+      // Check closeness relationships
       const relationships = activityRelationships.filter(
         rel => rel.activity_a_id === newZone.activity_id || rel.activity_b_id === newZone.activity_id
       );
@@ -60,7 +128,6 @@ export function ActivityZoneDrawer() {
         const relatedActivity = activities.find(a => a.id === relatedActivityId);
         if (!relatedActivity) return;
 
-        // Calculate distance between zones
         const zoneCenterRow = newZone.grid_y + newZone.grid_height / 2;
         const zoneCenterCol = newZone.grid_x + newZone.grid_width / 2;
         const relatedCenterRow = relatedZone.grid_y + relatedZone.grid_height / 2;
@@ -73,52 +140,26 @@ export function ActivityZoneDrawer() {
           )
         );
 
-        const newActivity = activities.find(a => a.id === newZone.activity_id);
-        const newActivityName = newActivity?.name || 'Zone';
-
-        // Validate against relationship rules
         if (rel.rating === 'must-be-close') {
-          if (distance <= 5) {
-            feedback.push({
-              message: `${newActivityName} is ${distance} squares from ${relatedActivity.name} — rated Must be close`,
-              type: 'success'
-            });
-          } else {
-            feedback.push({
-              message: `${newActivityName} is ${distance} squares from ${relatedActivity.name} — rated Must be close`,
-              type: 'warning'
-            });
-          }
+          feedback.push({
+            message: `${newActivityName} is ${distance} squares from ${relatedActivity.name} — rated Must be close`,
+            type: distance <= 5 ? 'success' : 'warning'
+          });
         } else if (rel.rating === 'prefer-close') {
-          if (distance <= 8) {
-            feedback.push({
-              message: `${newActivityName} is ${distance} squares from ${relatedActivity.name} — rated Prefer close`,
-              type: 'success'
-            });
-          } else {
-            feedback.push({
-              message: `${newActivityName} is ${distance} squares from ${relatedActivity.name} — rated Prefer close`,
-              type: 'warning'
-            });
-          }
+          feedback.push({
+            message: `${newActivityName} is ${distance} squares from ${relatedActivity.name} — rated Prefer close`,
+            type: distance <= 8 ? 'success' : 'warning'
+          });
         } else if (rel.rating === 'keep-apart') {
-          if (distance >= 10) {
-            feedback.push({
-              message: `${newActivityName} is ${distance} squares from ${relatedActivity.name} — rated Keep apart`,
-              type: 'success'
-            });
-          } else {
-            feedback.push({
-              message: `${newActivityName} is ${distance} squares from ${relatedActivity.name} — rated Keep apart`,
-              type: 'warning'
-            });
-          }
+          feedback.push({
+            message: `${newActivityName} is ${distance} squares from ${relatedActivity.name} — rated Keep apart`,
+            type: distance >= 10 ? 'success' : 'warning'
+          });
         }
       });
 
       setPlacementFeedback(feedback);
 
-      // Clear feedback after 10 seconds
       if (feedback.length > 0) {
         setTimeout(() => {
           setPlacementFeedback([]);
@@ -127,44 +168,31 @@ export function ActivityZoneDrawer() {
     }
 
     lastZoneCountRef.current = zones.length;
-  }, [zones, activityRelationships, activities]);
+  }, [zones, activityRelationships, activities, sizingRecommendations]);
 
   const formatUnit = (unit?: string) => {
     if (!unit) return 'units';
-    // Handle custom units
     if (unit === 'custom') return settings.primaryFlowUnitCustom || 'units';
     return unit;
   };
 
   const getActivityColor = (activity: Activity) => {
-    if (activity.type === 'corridor') {
-      return '#FFFFFF';
-    }
-    if (activity.color) {
-      return activity.color;
-    }
+    if (activity.type === 'corridor') return '#FFFFFF';
+    if (activity.color) return activity.color;
     switch (activity.type) {
-      case 'work-area':
-        return '#3B82F6';
-      case 'support-area':
-        return '#8B5CF6';
-      default:
-        return '#3B82F6';
+      case 'work-area': return '#3B82F6';
+      case 'support-area': return '#8B5CF6';
+      default: return '#3B82F6';
     }
   };
 
-  const getActivityTypeLabe = (type: string) => {
+  const getActivityTypeLabel = (type: string) => {
     switch (type) {
-      case 'work-area':
-        return 'Work Area';
-      case 'staging-lane':
-        return 'Staging Lane';
-      case 'corridor':
-        return 'Corridor / Path';
-      case 'support-area':
-        return 'Support Area';
-      default:
-        return type;
+      case 'work-area': return 'Work Area';
+      case 'staging-lane': return 'Staging Lane';
+      case 'corridor': return 'Corridor / Path';
+      case 'support-area': return 'Support Area';
+      default: return type;
     }
   };
 
@@ -207,55 +235,6 @@ export function ActivityZoneDrawer() {
 
   const { availableSquares, unassigned } = getAvailableSquares();
 
-  // Calculate volume summary and suggested zone sizes
-  const volumeSummary = useMemo(() => {
-    const stagingLanes = activities.filter(a => a.type === 'staging-lane');
-    const totalTypical = volumeTiming.reduce((sum, vt) => sum + vt.typical_volume_per_shift, 0);
-    const totalPeak = volumeTiming.reduce((sum, vt) => sum + vt.peak_volume_per_shift, 0);
-
-    // Calculate staging space allocation (60% of available space)
-    const stagingSpaceSquares = Math.floor(availableSquares * 0.6);
-
-    // Build suggestions for each staging lane
-    const suggestions = new Map<string, { squares: number; width: number; height: number }>();
-
-    stagingLanes.forEach(lane => {
-      const vt = volumeTiming.find(v => v.activity_id === lane.id);
-      if (vt && vt.percentage > 0) {
-        const suggestedSquares = Math.round((stagingSpaceSquares * vt.percentage) / 100);
-        // Calculate dimensions that approximate a rectangle
-        // Aim for aspect ratio between 1.0 and 1.5 (width:height)
-        const targetAspectRatio = 1.3;
-        let height = Math.round(Math.sqrt(suggestedSquares / targetAspectRatio));
-        let width = Math.round(suggestedSquares / height);
-
-        // Adjust if the product doesn't match closely
-        const actualSquares = width * height;
-        if (actualSquares < suggestedSquares - 2) {
-          // Too small, increase one dimension
-          if (width < height * targetAspectRatio) {
-            width++;
-          } else {
-            height++;
-          }
-        }
-
-        suggestions.set(lane.id, {
-          squares: suggestedSquares,
-          width: Math.max(2, width),
-          height: Math.max(2, height),
-        });
-      }
-    });
-
-    return {
-      totalTypical,
-      totalPeak,
-      stagingLanes,
-      suggestions,
-    };
-  }, [activities, volumeTiming, availableSquares]);
-
   // Calculate closeness relationships for selected activity
   const selectedActivityRelationships = useMemo(() => {
     if (!selectedActivityForZone) return null;
@@ -292,25 +271,24 @@ export function ActivityZoneDrawer() {
 
   const handleActivityClick = (activity: Activity) => {
     const zone = activityZoneMap.get(activity.id);
-    if (zone) {
-      return;
-    }
+    if (zone) return;
+
+    // Use sizing recommendation if available
+    const rec = getRecommendation(activity.id);
 
     let defaultWidth = 3;
     let defaultHeight = 3;
 
-    // Use suggested sizes for staging lanes based on volume data
-    if (activity.type === 'staging-lane') {
-      const suggestion = volumeSummary.suggestions.get(activity.id);
-      if (suggestion) {
-        defaultWidth = suggestion.width;
-        defaultHeight = suggestion.height;
-      } else {
-        defaultWidth = 6;
-        defaultHeight = 3;
-      }
+    if (rec) {
+      const dims = getRecommendedDimensions(rec.recommendedSquares);
+      defaultWidth = dims.width;
+      defaultHeight = dims.height;
     } else {
       switch (activity.type) {
+        case 'staging-lane':
+          defaultWidth = 6;
+          defaultHeight = 3;
+          break;
         case 'work-area':
           defaultWidth = 5;
           defaultHeight = 4;
@@ -388,8 +366,28 @@ export function ActivityZoneDrawer() {
                 </div>
               </div>
               <div className="text-sm text-gray-600 mt-2 font-medium">
-                Total: {zoneDrawWidth * zoneDrawHeight * settings.squareSize * settings.squareSize} sq ft
+                Total: {zoneDrawWidth * zoneDrawHeight} squares ({zoneDrawWidth * zoneDrawHeight * settings.squareSize * settings.squareSize} sq ft)
               </div>
+
+              {/* Sizing recommendation check */}
+              {(() => {
+                const rec = getRecommendation(selectedActivityForZone);
+                if (!rec) return null;
+                const currentSquares = zoneDrawWidth * zoneDrawHeight;
+                if (currentSquares < rec.recommendedSquares) {
+                  return (
+                    <div className="mt-2 p-2 bg-amber-50 border border-amber-300 rounded text-xs text-amber-800">
+                      ⚠ Recommended minimum is <span className="font-bold">{rec.recommendedSquares} squares</span> based on {rec.peakVolume} peak {formatUnit(settings.primaryFlowUnit)} × {rec.effectiveSqFtPerUnit.toFixed(1)} sq ft each. You're {rec.recommendedSquares - currentSquares} squares short.
+                    </div>
+                  );
+                }
+                return (
+                  <div className="mt-2 p-2 bg-green-50 border border-green-300 rounded text-xs text-green-800">
+                    ✓ Meets recommended minimum of {rec.recommendedSquares} squares
+                  </div>
+                );
+              })()}
+
               <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-200">
                 Click grid to place · Drag edges to resize · Hold & drag to move · Esc to cancel
               </div>
@@ -453,12 +451,20 @@ export function ActivityZoneDrawer() {
           </div>
         )}
 
+        {/* Placement priority hint */}
+        {sizingRecommendations.length > 0 && zones.length === 0 && !isDrawingZone && (
+          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+            <span className="font-semibold">Tip:</span> Activities are sorted largest-first. Place the biggest zones first — they're the hardest to fit.
+          </div>
+        )}
+
         <div className="space-y-2">
-          {activities.map(activity => {
+          {sortedActivities.map(activity => {
             const zone = activityZoneMap.get(activity.id);
             const isPlaced = !!zone;
             const color = getActivityColor(activity);
             const isSelected = selectedActivityForZone === activity.id && isDrawingZone;
+            const rec = getRecommendation(activity.id);
 
             return (
               <button
@@ -485,44 +491,57 @@ export function ActivityZoneDrawer() {
                   <div className="flex-1">
                     <div className="font-medium text-gray-900">{activity.name}</div>
                     <div className="text-xs text-gray-500 mt-0.5">
-                      {getActivityTypeLabe(activity.type)}
+                      {getActivityTypeLabel(activity.type)}
                     </div>
 
-                    {/* Show volume data for staging lanes */}
-                    {activity.type === 'staging-lane' && !zone && (() => {
-                      const vt = volumeTiming.find(v => v.activity_id === activity.id);
-                      const suggestion = volumeSummary.suggestions.get(activity.id);
+                    {/* Unplaced: show recommendation */}
+                    {!isPlaced && rec && (
+                      <div className="mt-2 space-y-1 text-xs">
+                        <div className="text-gray-700 font-medium">
+                          {rec.peakVolume.toLocaleString()} peak {formatUnit(settings.primaryFlowUnit)}
+                        </div>
+                        <div className="text-blue-700 font-semibold bg-blue-50 px-2 py-1 rounded inline-block">
+                          Recommended: {rec.recommendedSquares} squares ({Math.round(rec.floorAreaSqFt)} sq ft)
+                        </div>
+                      </div>
+                    )}
 
-                      if (vt) {
-                        return (
-                          <div className="mt-2 space-y-1 text-xs">
-                            <div className="text-gray-700 font-medium">
-                              {vt.typical_volume_per_shift.toLocaleString()} {formatUnit(settings.primaryFlowUnit)} typical / {vt.peak_volume_per_shift.toLocaleString()} peak
-                            </div>
-                            <div className="text-blue-600 font-semibold">{vt.percentage.toFixed(1)}% of total</div>
-                            {suggestion && (
-                              <div className="text-green-700 font-semibold bg-green-50 px-2 py-1 rounded inline-block">
-                                Suggested: {suggestion.squares} squares ({suggestion.width} × {suggestion.height})
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                    {/* Unplaced staging with no recommendation (no volume data) */}
+                    {!isPlaced && !rec && activity.type === 'staging-lane' && (
+                      <div className="mt-2 text-xs text-gray-400 italic">
+                        Enter peak volumes in Step 2D for sizing recommendation
+                      </div>
+                    )}
 
                     {isSelected && (
                       <div className="mt-2 px-2 py-1 bg-green-600 text-white text-xs font-bold rounded inline-block animate-pulse">
                         ✓ Selected — Click on grid to place
                       </div>
                     )}
+
+                    {/* Placed: show size + sizing check */}
                     {zone && (
                       <div className="mt-2 space-y-1">
                         <div className="text-xs text-gray-600">
                           Size: {zone.grid_width} × {zone.grid_height} squares
                           ({zone.grid_width * zone.grid_height * settings.squareSize * settings.squareSize} sq ft)
                         </div>
-                        {activity.type === 'staging-lane' && (() => {
+                        {rec && (() => {
+                          const actualSquares = zone.grid_width * zone.grid_height;
+                          if (actualSquares < rec.recommendedSquares) {
+                            return (
+                              <div className="text-xs text-amber-700 font-medium bg-amber-50 px-2 py-1 rounded">
+                                ⚠ Undersized — {actualSquares} of {rec.recommendedSquares} recommended squares
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="text-xs text-green-700 font-medium">
+                              ✓ Meets recommended {rec.recommendedSquares} squares
+                            </div>
+                          );
+                        })()}
+                        {!rec && activity.type === 'staging-lane' && (() => {
                           const vt = volumeTiming.find(v => v.activity_id === activity.id);
                           if (!vt) return null;
 
@@ -551,15 +570,10 @@ export function ActivityZoneDrawer() {
                                   ⚠ Undersized — handles {volumePercent.toFixed(0)}% of volume but has {spacePercent.toFixed(0)}% of space
                                 </div>
                               )}
-                              {diff > 10 && spacePercent > volumePercent && (
-                                <div className="text-blue-700 font-medium bg-blue-50 px-2 py-1 rounded">
-                                  ℹ Oversized — handles {volumePercent.toFixed(0)}% of volume but has {spacePercent.toFixed(0)}% of space
-                                </div>
-                              )}
                             </div>
                           );
                         })()}
-                        {activity.type !== 'staging-lane' && (() => {
+                        {activity.type !== 'staging-lane' && !rec && (() => {
                           const gridDims = getGridDimensions();
                           const totalSquares = gridDims.rows * gridDims.cols;
                           const zoneSpace = zone.grid_width * zone.grid_height;
@@ -595,8 +609,6 @@ export function ActivityZoneDrawer() {
             No activities yet. Add activities in Step 2C.
           </div>
         )}
-
-
 
       {/* Placement Feedback */}
       {placementFeedback.length > 0 && (
