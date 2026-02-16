@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useGridStore } from '../store/gridStore';
 import { supabase } from '../lib/supabase';
@@ -9,6 +9,9 @@ const DB_WRITE_DELAY = 500;
 
 export function ActivityList() {
   const { activities, setActivities, deleteActivity } = useGridStore();
+
+  // When true, suppress sequence sorting so the card doesn't jump while typing
+  const [isEditingSeq, setIsEditingSeq] = useState(false);
 
   // Track pending DB writes so we can debounce per-field-per-activity
   const pendingWrites = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -87,10 +90,16 @@ export function ActivityList() {
     deleteActivity(id);
   };
 
-  // Keep activities in the order they were added — sequence number is informational here,
-  // it does its real work in Step 2E Closeness. No auto-sorting so typing a number
-  // doesn't yank the card out from under the user's cursor.
-  const sortedActivities = [...activities].sort((a, b) => a.sort_order - b.sort_order);
+  // Sort by sequence order, but NOT while the user is actively editing a Seq # field.
+  // This prevents the card from jumping out from under their cursor mid-keystroke.
+  // Once they click/tab out of the field, the list re-sorts.
+  const sortedActivities = [...activities].sort((a, b) => {
+    if (isEditingSeq) return a.sort_order - b.sort_order;
+    const aSeq = a.sequence_order ?? Infinity;
+    const bSeq = b.sequence_order ?? Infinity;
+    if (aSeq !== bSeq) return aSeq - bSeq;
+    return a.sort_order - b.sort_order;
+  });
 
   // Count sequenced activities for the summary
   const sequencedCount = activities.filter(a => a.sequence_order != null).length;
@@ -147,6 +156,8 @@ export function ActivityList() {
                   type="number"
                   min="1"
                   value={activity.sequence_order ?? ''}
+                  onFocus={() => setIsEditingSeq(true)}
+                  onBlur={() => setIsEditingSeq(false)}
                   onChange={(e) => {
                     const val = e.target.value;
                     handleUpdateActivity(
