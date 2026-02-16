@@ -292,13 +292,18 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
                           autoFocus
                         />
                       ) : (
-                        <h3
-                          className="text-lg font-semibold text-gray-900 truncate"
-                          onDoubleClick={(e) => { e.stopPropagation(); setEditingName(layout.id); setTempName(layout.name); }}
-                          title="Double-click to rename"
-                        >
-                          {layout.name}
-                        </h3>
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-lg font-semibold text-gray-900 truncate">
+                            {layout.name}
+                          </h3>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingName(layout.id); setTempName(layout.name); }}
+                            className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                            title="Rename layout"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       )}
                       <div className="flex items-center gap-3 text-sm text-gray-500 mt-0.5">
                         <span className="flex items-center gap-1">
