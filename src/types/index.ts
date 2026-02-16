@@ -1,3 +1,4 @@
+// FlowGrid Layout Planner — Type Definitions
 export interface GridCoordinate {
   row: number;
   col: number;
@@ -120,6 +121,7 @@ export interface Activity {
   color?: string;
   departure_time?: string;
   sort_order: number;
+  sequence_order?: number | null;
   created_at: string;
 }
 

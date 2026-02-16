@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Filter, ArrowUpDown, Sparkles } from 'lucide-react';
+import { Filter, ArrowUpDown, Sparkles, Zap } from 'lucide-react';
 import { useGridStore } from '../store/gridStore';
 import { RelationshipRating as Rating, CLOSE_REASONS, KEEP_APART_REASONS } from '../types';
 
@@ -13,13 +13,18 @@ export function RelationshipRating() {
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all');
   const [sortOption, setSortOption] = useState<SortOption>('default');
 
+  // Check if we have sequence data to offer defaults
+  const sequencedActivities = activities.filter(a => a.sequence_order != null);
+  const hasSequenceData = sequencedActivities.length >= 2;
+
   const getActivityPairs = () => {
     const pairs: Array<{
       a: typeof activities[0];
       b: typeof activities[0];
       aIndex: number;
       bIndex: number;
-      isSequential: boolean;
+      sequenceDistance: number | null;
+      suggestedRating: Rating | null;
     }> = [];
 
     for (let i = 0; i < activities.length; i++) {
@@ -31,8 +36,29 @@ export function RelationshipRating() {
           continue;
         }
 
-        const isSequential = j === i + 1;
-        pairs.push({ a: activityA, b: activityB, aIndex: i, bIndex: j, isSequential });
+        // Calculate sequence distance and suggested rating
+        let sequenceDistance: number | null = null;
+        let suggestedRating: Rating | null = null;
+
+        const seqA = activityA.sequence_order;
+        const seqB = activityB.sequence_order;
+
+        if (seqA != null && seqB != null) {
+          sequenceDistance = Math.abs(seqA - seqB);
+
+          if (sequenceDistance === 0) {
+            // Same sequence number = parallel activities (e.g. staging lanes share a step)
+            suggestedRating = 'does-not-matter';
+          } else if (sequenceDistance === 1) {
+            suggestedRating = 'must-be-close';
+          } else if (sequenceDistance === 2) {
+            suggestedRating = 'prefer-close';
+          } else {
+            suggestedRating = 'does-not-matter';
+          }
+        }
+
+        pairs.push({ a: activityA, b: activityB, aIndex: i, bIndex: j, sequenceDistance, suggestedRating });
       }
     }
 
@@ -124,9 +150,32 @@ export function RelationshipRating() {
     }
   };
 
-  const acceptSuggestion = (aId: string, bId: string) => {
-    handleRatingChange(aId, bId, 'must-be-close');
+  // Apply defaults from process sequence to all unrated pairs
+  const applySequenceDefaults = () => {
+    let appliedCount = 0;
+
+    allPairs.forEach(pair => {
+      if (!pair.suggestedRating) return;
+      // Only apply to pairs that haven't been manually rated
+      const existing = getRelationship(pair.a.id, pair.b.id);
+      if (existing && existing.rating !== 'does-not-matter') return;
+
+      if (pair.suggestedRating !== 'does-not-matter') {
+        const reason = pair.sequenceDistance === 1 ? 'sequential-process' : 'heavy-material-flow';
+        updateRelationship(pair.a.id, pair.b.id, pair.suggestedRating, reason);
+        appliedCount++;
+      }
+    });
+
+    return appliedCount;
   };
+
+  // Count how many pairs would get defaults applied
+  const defaultableCount = allPairs.filter(pair => {
+    if (!pair.suggestedRating || pair.suggestedRating === 'does-not-matter') return false;
+    const existing = getRelationship(pair.a.id, pair.b.id);
+    return !existing || existing.rating === 'does-not-matter';
+  }).length;
 
   const getRatingBadgeColor = (rating: Rating) => {
     switch (rating) {
@@ -154,6 +203,13 @@ export function RelationshipRating() {
     }
   };
 
+  const getSequenceLabel = (pair: typeof allPairs[0]) => {
+    if (pair.sequenceDistance === null) return null;
+    if (pair.sequenceDistance === 0) return 'Same step (parallel)';
+    if (pair.sequenceDistance === 1) return 'Adjacent steps';
+    return `${pair.sequenceDistance} steps apart`;
+  };
+
   const getRatingFilterCount = (filter: RatingFilter) => {
     if (filter === 'all') return allPairs.length;
     if (filter === 'not-rated') {
@@ -175,6 +231,48 @@ export function RelationshipRating() {
           of noise, safety, or traffic conflicts. Rate each pair.
         </p>
       </div>
+
+      {/* Sequence-based defaults banner */}
+      {hasSequenceData && defaultableCount > 0 && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg shrink-0">
+              <Zap className="w-5 h-5 text-purple-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-purple-900 mb-1">
+                Auto-fill from Process Sequence
+              </p>
+              <p className="text-sm text-purple-700 mb-3">
+                Your process sequence from Step 2C can set defaults for {defaultableCount} unrated pair{defaultableCount !== 1 ? 's' : ''}:
+                adjacent steps → <strong>Must be close</strong>,
+                2 steps apart → <strong>Prefer close</strong>,
+                3+ steps apart → <strong>No preference</strong>.
+                You can review and override any of them after.
+              </p>
+              <button
+                onClick={() => {
+                  const count = applySequenceDefaults();
+                  if (count > 0) {
+                    // Force re-render by toggling filter
+                    setRatingFilter('all');
+                  }
+                }}
+                className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Apply Defaults ({defaultableCount} pair{defaultableCount !== 1 ? 's' : ''})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hasSequenceData && defaultableCount === 0 && ratedCount > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 shrink-0" />
+          <span>All pairs with sequence data have been rated. Review below and adjust as needed.</span>
+        </div>
+      )}
 
       {allPairs.length > 0 && (
         <>
@@ -209,7 +307,7 @@ export function RelationshipRating() {
                   <option value="all">Show pairs for: All Activities</option>
                   {activities.map(activity => (
                     <option key={activity.id} value={activity.id}>
-                      {activity.name}
+                      {activity.name}{activity.sequence_order != null ? ` (Seq ${activity.sequence_order})` : ''}
                     </option>
                   ))}
                 </select>
@@ -305,32 +403,39 @@ export function RelationshipRating() {
 
       <div className="space-y-3">
         {filteredAndSortedPairs.map((pair) => {
-          const { a, b, isSequential } = pair;
+          const { a, b } = pair;
           const relationship = getRelationship(a.id, b.id);
           const rating = relationship?.rating || 'does-not-matter';
           const reason = relationship?.reason || '';
-          const isRated = relationship && relationship.rating !== 'does-not-matter';
-          const showSuggestion = isSequential && !isRated;
+          const seqLabel = getSequenceLabel(pair);
 
           return (
             <div key={`${a.id}-${b.id}`} className="bg-white border border-gray-300 rounded-lg p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <div className="font-medium text-gray-900">
-                    {a.name} ↔ {b.name}
+                  <div className="font-medium text-gray-900 flex items-center gap-2">
+                    <span>
+                      {a.sequence_order != null && (
+                        <span className="text-xs font-semibold text-gray-400 mr-1">({a.sequence_order})</span>
+                      )}
+                      {a.name}
+                    </span>
+                    <span className="text-gray-400">↔</span>
+                    <span>
+                      {b.sequence_order != null && (
+                        <span className="text-xs font-semibold text-gray-400 mr-1">({b.sequence_order})</span>
+                      )}
+                      {b.name}
+                    </span>
                   </div>
-                  {showSuggestion && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded">
-                        <Sparkles className="w-3 h-3" />
-                        <span>Suggested: Must be close — based on your process order</span>
-                      </div>
-                      <button
-                        onClick={() => acceptSuggestion(a.id, b.id)}
-                        className="text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700 transition-colors"
-                      >
-                        Accept
-                      </button>
+                  {seqLabel && (
+                    <div className="mt-1 text-xs text-purple-600 font-medium">
+                      {seqLabel}
+                      {pair.suggestedRating && pair.suggestedRating !== 'does-not-matter' && rating === 'does-not-matter' && (
+                        <span className="text-purple-500 ml-1">
+                          — suggests "{getRatingLabel(pair.suggestedRating)}"
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

@@ -36,7 +36,7 @@ export function ActivityList() {
     }
   };
 
-  const handleUpdateActivity = useCallback((id: string, field: keyof Activity, value: string | number) => {
+  const handleUpdateActivity = useCallback((id: string, field: keyof Activity, value: string | number | null) => {
     // 1. Update local state IMMEDIATELY — no waiting for network
     setActivities(
       useGridStore.getState().activities.map((activity) =>
@@ -87,21 +87,38 @@ export function ActivityList() {
     deleteActivity(id);
   };
 
+  // Sort activities by sequence_order for display (unsequenced at end)
+  const sortedActivities = [...activities].sort((a, b) => {
+    const aSeq = a.sequence_order ?? Infinity;
+    const bSeq = b.sequence_order ?? Infinity;
+    if (aSeq !== bSeq) return aSeq - bSeq;
+    return a.sort_order - b.sort_order;
+  });
+
+  // Count sequenced activities for the summary
+  const sequencedCount = activities.filter(a => a.sequence_order != null).length;
+  const maxSeq = activities.reduce((max, a) => Math.max(max, a.sequence_order ?? 0), 0);
+
   return (
     <div className="space-y-4">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
         <p className="font-medium mb-2">List every activity that happens on your floor</p>
-        <p>
+        <p className="mb-2">
           Receiving, sorting, staging, wrapping, weighing, packing, shipping, and anything else.
           Do not worry about where they go yet. Just list what happens.
+        </p>
+        <p>
+          <strong>Process Seq #</strong> — Enter the order each activity occurs in your material flow
+          (1 = first, 2 = second, etc.). Parallel activities like destination staging lanes can share the same number.
+          Support areas not in the flow can be left blank.
         </p>
       </div>
 
       <div className="space-y-2">
-        {activities.map((activity) => (
+        {sortedActivities.map((activity) => (
           <div key={activity.id} className="bg-white border border-gray-300 rounded-lg p-4">
             <div className="grid grid-cols-12 gap-3 items-start">
-              <div className="col-span-5">
+              <div className="col-span-4">
                 <label className="text-xs font-medium text-gray-700 block mb-1">
                   Activity Name
                 </label>
@@ -127,11 +144,30 @@ export function ActivityList() {
                 </select>
               </div>
 
+              <div className="col-span-1">
+                <label className="text-xs font-medium text-gray-700 block mb-1">Seq #</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={activity.sequence_order ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    handleUpdateActivity(
+                      activity.id,
+                      'sequence_order',
+                      val === '' ? null : parseInt(val, 10)
+                    );
+                  }}
+                  placeholder="—"
+                  className="w-full px-2 py-2 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
               {activity.type === 'staging-lane' && (
                 <>
-                  <div className="col-span-2">
+                  <div className="col-span-1">
                     <label className="text-xs font-medium text-gray-700 block mb-1">
-                      Destination Code
+                      Dest Code
                     </label>
                     <input
                       type="text"
@@ -140,7 +176,7 @@ export function ActivityList() {
                         handleUpdateActivity(activity.id, 'destination_code', e.target.value)
                       }
                       placeholder="MKK"
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-2 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
@@ -150,13 +186,13 @@ export function ActivityList() {
                       type="color"
                       value={activity.color || '#3B82F6'}
                       onChange={(e) => handleUpdateActivity(activity.id, 'color', e.target.value)}
-                      className="w-full h-10 border border-gray-300 rounded cursor-pointer"
+                      className="w-full h-[38px] border border-gray-300 rounded cursor-pointer"
                     />
                   </div>
 
-                  <div className="col-span-2">
+                  <div className="col-span-1">
                     <label className="text-xs font-medium text-gray-700 block mb-1">
-                      Departure Time
+                      Departs
                     </label>
                     <input
                       type="time"
@@ -164,7 +200,7 @@ export function ActivityList() {
                       onChange={(e) =>
                         handleUpdateActivity(activity.id, 'departure_time', e.target.value)
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-1 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </>
@@ -174,7 +210,7 @@ export function ActivityList() {
                 <div className="col-span-3"></div>
               )}
 
-              <div className="col-span-1 flex items-end justify-end h-full pb-2">
+              <div className="col-span-1 flex items-end justify-end h-full pb-1">
                 <button
                   onClick={() => handleDeleteActivity(activity.id)}
                   className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
@@ -196,8 +232,13 @@ export function ActivityList() {
         Add Activity
       </button>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700">
-        <span className="font-semibold">Activities listed:</span> {activities.length}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700 flex items-center justify-between">
+        <span><span className="font-semibold">Activities listed:</span> {activities.length}</span>
+        {sequencedCount > 0 && (
+          <span className="text-gray-500">
+            {sequencedCount} of {activities.length} sequenced (steps 1–{maxSeq})
+          </span>
+        )}
       </div>
     </div>
   );
