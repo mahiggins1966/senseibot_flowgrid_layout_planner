@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useGridStore } from '../store/gridStore';
-import { calculateZoneSizing } from '../utils/zoneSizing';
 import { UNIT_FOOTPRINT_OPTIONS } from '../types';
 
 export function VolumeTimingInput() {
@@ -29,7 +28,6 @@ export function VolumeTimingInput() {
   };
 
   const floorUnitLabel = getFloorUnitLabel();
-  const floorUnitSingular = floorUnitLabel.replace(/s$/, '');
 
   const totalTypicalVolume = stagingLanes.reduce((sum, lane) => {
     const vt = volumeTiming.find((v) => v.activity_id === lane.id);
@@ -106,33 +104,6 @@ export function VolumeTimingInput() {
     const volume = getTypicalVolumeForActivity(activityId);
     return ((volume / totalTypicalVolume) * 100).toFixed(1);
   };
-
-  const getHighestVolumeDestination = () => {
-    if (stagingLanes.length === 0) return null;
-    let highest = stagingLanes[0];
-    let highestVolume = getTypicalVolumeForActivity(highest.id);
-    stagingLanes.forEach((lane) => {
-      const volume = getTypicalVolumeForActivity(lane.id);
-      if (volume > highestVolume) {
-        highest = lane;
-        highestVolume = volume;
-      }
-    });
-    return highestVolume > 0 ? highest : null;
-  };
-
-  const getEarliestDeparture = () => {
-    const lanesWithTime = stagingLanes.filter((lane) => lane.departure_time);
-    if (lanesWithTime.length === 0) return null;
-    lanesWithTime.sort((a, b) => {
-      if (!a.departure_time || !b.departure_time) return 0;
-      return a.departure_time.localeCompare(b.departure_time);
-    });
-    return lanesWithTime[0];
-  };
-
-  const highestDest = getHighestVolumeDestination();
-  const earliestDep = getEarliestDeparture();
 
   // Helper: save all fields for a lane
   const saveVolumeTiming = async (laneId: string, overrides: Partial<{
@@ -399,70 +370,6 @@ export function VolumeTimingInput() {
         </div>
       )}
 
-      {/* Recommended Zone Sizes */}
-      {stagingLanes.length > 0 && totalPeakUnits > 0 && settings.unitFootprintSqFt && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm">
-          <p className="font-semibold text-amber-900 mb-2">Recommended Minimum Zone Sizes</p>
-          <p className="text-amber-700 text-xs mb-3">
-            Based on peak {floorUnitLabel.toLowerCase()} on floor × {settings.unitFootprintSqFt} sq ft per {floorUnitSingular.toLowerCase()} × {settings.accessFactor ?? 1.3}x access
-            {(settings.stackingHeight ?? 1) > 1 ? ` ÷ ${settings.stackingHeight}-high stacking` : ''}
-            {' '}÷ {settings.squareSize}×{settings.squareSize} ft squares
-          </p>
-          <div className="space-y-1.5">
-            {calculateZoneSizing(activities, volumeTiming, settings).map(rec => (
-              <div key={rec.activityId} className="flex items-center justify-between">
-                <span className="text-amber-800">
-                  {rec.activityName}
-                  <span className="text-amber-600 ml-1">({rec.peakUnits} peak {floorUnitLabel.toLowerCase()})</span>
-                </span>
-                <span className="font-bold text-amber-900">
-                  {rec.recommendedSquares} squares
-                  <span className="font-normal text-amber-700 ml-1">({Math.round(rec.floorAreaSqFt)} sq ft)</span>
-                </span>
-              </div>
-            ))}
-            {calculateZoneSizing(activities, volumeTiming, settings).length === 0 && (
-              <p className="text-amber-600 italic">Enter peak {floorUnitLabel.toLowerCase()} on floor above to see recommendations.</p>
-            )}
-          </div>
-          <p className="text-xs text-amber-600 mt-2">These are recommendations only — you can adjust zone sizes when placing them in Step 2F.</p>
-        </div>
-      )}
-
-      {stagingLanes.length > 0 && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-gray-700">Typical shift:</span>
-            <span className="text-gray-900">
-              {totalTypicalVolume.toLocaleString()} {primaryUnit.toLowerCase()}
-              {totalTypicalUnits > 0 && ` · ${totalTypicalUnits.toLocaleString()} ${floorUnitLabel.toLowerCase()}`}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-gray-700">Peak shift:</span>
-            <span className="text-gray-900">
-              {totalPeakVolume.toLocaleString()} {primaryUnit.toLowerCase()}
-              {totalPeakUnits > 0 && ` · ${totalPeakUnits.toLocaleString()} ${floorUnitLabel.toLowerCase()}`}
-            </span>
-          </div>
-          {highestDest && (
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-gray-700">Highest volume:</span>
-              <span className="text-gray-900">
-                {highestDest.name} ({getPercentageForActivity(highestDest.id)}%)
-              </span>
-            </div>
-          )}
-          {earliestDep && (
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-gray-700">First departure:</span>
-              <span className="text-gray-900">
-                {earliestDep.name} ({earliestDep.departure_time})
-              </span>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
