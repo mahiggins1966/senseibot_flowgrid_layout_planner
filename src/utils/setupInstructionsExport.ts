@@ -12,50 +12,45 @@ interface SetupData {
 }
 
 /**
- * Captures the grid SVG as a PNG data URL via canvas rendering.
+ * Clones the grid SVG and prepares it for print embedding.
+ * Resets the viewport transform so the full grid is visible,
+ * strips interactive attributes, and returns clean SVG markup.
  */
-function captureSvgAsImage(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const svg = document.querySelector('svg');
-    if (!svg) { reject('SVG not found'); return; }
+function getCleanSvgMarkup(): string {
+  const svg = document.querySelector('svg');
+  if (!svg) return '';
 
-    const clone = svg.cloneNode(true) as SVGSVGElement;
-    const bbox = svg.getBoundingClientRect();
-    clone.setAttribute('width', String(bbox.width));
-    clone.setAttribute('height', String(bbox.height));
+  const clone = svg.cloneNode(true) as SVGSVGElement;
 
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(clone);
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
+  // Reset the viewport transform group to show the full grid
+  const transformGroup = clone.querySelector('g');
+  if (transformGroup) {
+    transformGroup.setAttribute('transform', 'translate(0, 0) scale(1)');
+    transformGroup.removeAttribute('style');
+  }
 
-    const img = new Image();
-    img.onload = () => {
-      const scale = 2;
-      const canvas = document.createElement('canvas');
-      canvas.width = bbox.width * scale;
-      canvas.height = bbox.height * scale;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { reject('Canvas context failed'); return; }
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject('Image render failed'); };
-    img.src = url;
-  });
+  // Set explicit dimensions for the print context
+  const viewBox = clone.getAttribute('viewBox');
+  if (viewBox) {
+    const parts = viewBox.split(/\s+/);
+    if (parts.length === 4) {
+      clone.setAttribute('width', parts[2]);
+      clone.setAttribute('height', parts[3]);
+    }
+  }
+
+  // Strip all class attributes (Tailwind classes won't resolve in print)
+  clone.querySelectorAll('[class]').forEach(el => el.removeAttribute('class'));
+  clone.removeAttribute('class');
+  clone.style.cssText = '';
+  clone.removeAttribute('style');
+
+  const serializer = new XMLSerializer();
+  return serializer.serializeToString(clone);
 }
 
-export async function exportSetupInstructions(data: SetupData) {
-  let imageDataUrl: string;
-  try {
-    imageDataUrl = await captureSvgAsImage();
-  } catch {
-    imageDataUrl = '';
-  }
+export function exportSetupInstructions(data: SetupData) {
+  const svgMarkup = getCleanSvgMarkup();
 
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
@@ -333,7 +328,7 @@ export async function exportSetupInstructions(data: SetupData) {
 
     /* Reference diagram */
     .diagram-container { text-align: center; margin: 12px 0; }
-    .diagram-container img { max-width: 100%; max-height: 50vh; height: auto; border: 1px solid #e5e7eb; border-radius: 4px; }
+    .diagram-container svg { max-width: 100%; max-height: 50vh; height: auto; display: block; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 4px; background: white; }
 
     /* Sign-off */
     .signoff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; }
@@ -445,8 +440,8 @@ export async function exportSetupInstructions(data: SetupData) {
       <h2>Reference Layout Diagram</h2>
     </div>
     <p style="margin-bottom:8px;">This is the target layout. All step-by-step instructions reference positions on this diagram.</p>
-    ${imageDataUrl
-      ? `<div class="diagram-container"><img src="${imageDataUrl}" alt="Floor Layout Plan" /></div>`
+    ${svgMarkup
+      ? `<div class="diagram-container">${svgMarkup}</div>`
       : `<div class="diagram-container" style="padding:40px; background:#f3f4f6; border-radius:8px; color:#6b7280;">Layout image not available — refer to the Floor Plan PDF export</div>`
     }
     <div class="tip">

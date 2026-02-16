@@ -13,56 +13,53 @@ interface ExportData {
 }
 
 /**
- * Captures the grid SVG as a PNG data URL via canvas rendering.
- * This ensures the image survives being placed in a new window
- * where Tailwind / app CSS is not available.
+ * Clones the grid SVG and prepares it for print embedding.
+ * Resets the viewport transform so the full grid is visible,
+ * strips interactive attributes, and returns clean SVG markup.
  */
-function captureSvgAsImage(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const svg = document.querySelector('svg');
-    if (!svg) { reject('SVG not found'); return; }
+function getCleanSvgMarkup(): string {
+  const svg = document.querySelector('svg');
+  if (!svg) return '';
 
-    const clone = svg.cloneNode(true) as SVGSVGElement;
-    // Force explicit dimensions so the canvas knows the size
-    const bbox = svg.getBoundingClientRect();
-    clone.setAttribute('width', String(bbox.width));
-    clone.setAttribute('height', String(bbox.height));
+  const clone = svg.cloneNode(true) as SVGSVGElement;
 
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(clone);
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
+  // Reset the viewport transform group to show the full grid
+  // The first <g> child has transform="translate(panX, panY) scale(zoom)"
+  const transformGroup = clone.querySelector('g');
+  if (transformGroup) {
+    transformGroup.setAttribute('transform', 'translate(0, 0) scale(1)');
+    transformGroup.removeAttribute('style');
+  }
 
-    const img = new Image();
-    img.onload = () => {
-      // Render at 2x for crisp print quality
-      const scale = 2;
-      const canvas = document.createElement('canvas');
-      canvas.width = bbox.width * scale;
-      canvas.height = bbox.height * scale;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { reject('Canvas context failed'); return; }
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject('Image render failed');
-    };
-    img.src = url;
-  });
+  // Set explicit dimensions for the print context
+  const viewBox = clone.getAttribute('viewBox');
+  if (viewBox) {
+    const parts = viewBox.split(/\s+/);
+    if (parts.length === 4) {
+      clone.setAttribute('width', parts[2]);
+      clone.setAttribute('height', parts[3]);
+    }
+  }
+
+  // Strip all class attributes (Tailwind classes won't resolve in print)
+  clone.querySelectorAll('[class]').forEach(el => el.removeAttribute('class'));
+  clone.removeAttribute('class');
+
+  // Strip interactive styles
+  clone.style.cssText = '';
+  clone.removeAttribute('style');
+
+  // Remove any elements that are purely interactive UI (mode banners, etc.)
+  // These are siblings outside the SVG so won't be in the clone anyway
+
+  const serializer = new XMLSerializer();
+  return serializer.serializeToString(clone);
 }
 
-export async function exportFloorPlanPDF(data?: ExportData) {
-  let imageDataUrl: string;
-  try {
-    imageDataUrl = await captureSvgAsImage();
-  } catch (err) {
-    alert('Could not capture the floor plan image. Make sure the grid is visible.');
+export function exportFloorPlanPDF(data?: ExportData) {
+  const svgMarkup = getCleanSvgMarkup();
+  if (!svgMarkup) {
+    alert('Grid not found. Make sure you are on the layout view.');
     return;
   }
 
@@ -223,7 +220,7 @@ export async function exportFloorPlanPDF(data?: ExportData) {
     .layout-meta div { margin-bottom: 2px; }
 
     .plan-image { text-align: center; margin: 0 auto; }
-    .plan-image img { max-width: 100%; max-height: 65vh; height: auto; display: block; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 4px; }
+    .plan-image svg { max-width: 100%; max-height: 65vh; height: auto; display: block; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 4px; background: white; }
 
     .layout-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af; }
 
@@ -297,7 +294,7 @@ export async function exportFloorPlanPDF(data?: ExportData) {
     </div>
 
     <div class="plan-image">
-      <img src="${imageDataUrl}" alt="Floor Layout Plan" />
+      ${svgMarkup}
     </div>
 
     <div class="layout-footer">
