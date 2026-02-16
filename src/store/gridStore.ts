@@ -713,9 +713,27 @@ export const useGridStore = create<GridStore>((set, get) => ({
     }
   },
 
-  setActiveProject: (projectId) => set({ activeProjectId: projectId }),
+  setActiveProject: (projectId) => set({
+    activeProjectId: projectId,
+    // Clear project-scoped data so stale data doesn't flash
+    activities: [],
+    volumeTiming: [],
+    activityRelationships: [],
+    doors: [],
+    paintedSquares: new Map(),
+  }),
 
-  setActiveLayout: (layoutId) => set({ activeLayoutId: layoutId }),
+  setActiveLayout: (layoutId) => set({
+    activeLayoutId: layoutId,
+    // Clear layout-scoped data
+    zones: [],
+    corridors: [],
+    placedObjects: [],
+    selectedZone: null,
+    selectedObject: null,
+    selectedDoor: null,
+    selectedCorridor: null,
+  }),
 
   setCurrentSubStep: (subStep) => set({ currentSubStep: subStep }),
 

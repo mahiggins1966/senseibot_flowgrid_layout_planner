@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { HomeScreen } from './components/HomeScreen';
 import { StepBar } from './components/StepBar';
 import { StepRouter } from './components/StepRouter';
 import { ObjectPopup } from './components/ObjectPopup';
@@ -6,26 +7,62 @@ import { ZoneEditor } from './components/ZoneEditor';
 import { useGridStore } from './store/gridStore';
 
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
+type AppView = 'home' | 'editor';
 
 function App() {
-  const { loadSettings, loadActivities, loadVolumeTiming, loadActivityRelationships, setCurrentSubStep: setStoreSubStep } = useGridStore();
-  const [currentSubStep, setCurrentSubStep] = useState<SubStep>('2a');
+  const {
+    loadSettings,
+    loadActivities,
+    loadVolumeTiming,
+    loadActivityRelationships,
+    setCurrentSubStep: setStoreSubStep,
+    setActiveProject,
+    setActiveLayout,
+  } = useGridStore();
 
-  useEffect(() => {
-    loadSettings();
-    loadActivities();
-    loadVolumeTiming();
-    loadActivityRelationships();
-  }, [loadSettings, loadActivities, loadVolumeTiming, loadActivityRelationships]);
+  const [view, setView] = useState<AppView>('home');
+  const [currentSubStep, setCurrentSubStep] = useState<SubStep>('2a');
 
   useEffect(() => {
     setStoreSubStep(currentSubStep);
   }, [currentSubStep, setStoreSubStep]);
 
+  const handleOpenProject = (projectId: string, layoutId: string) => {
+    // Set the active project + layout in the store
+    setActiveProject(projectId);
+    setActiveLayout(layoutId);
+
+    // Reset to first step
+    setCurrentSubStep('2a');
+
+    // Switch to editor view — data loads happen after view switch
+    setView('editor');
+  };
+
+  // Load data when we enter the editor
+  useEffect(() => {
+    if (view === 'editor') {
+      loadSettings();
+      loadActivities();
+      loadVolumeTiming();
+      loadActivityRelationships();
+    }
+  }, [view, loadSettings, loadActivities, loadVolumeTiming, loadActivityRelationships]);
+
+  const handleBackToHome = () => {
+    setView('home');
+  };
+
   const handleSubStepChange = (subStep: SubStep) => {
     setCurrentSubStep(subStep);
   };
 
+  // Home screen
+  if (view === 'home') {
+    return <HomeScreen onOpenProject={handleOpenProject} />;
+  }
+
+  // Editor view
   const needsGrid = ['2a', '2b', '2f'].includes(currentSubStep);
 
   return (
@@ -33,6 +70,7 @@ function App() {
       <StepBar
         currentSubStep={currentSubStep}
         onSubStepChange={handleSubStepChange}
+        onBackToHome={handleBackToHome}
       />
 
       <div className="flex-1 overflow-hidden">
