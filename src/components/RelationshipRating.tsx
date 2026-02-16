@@ -4,14 +4,14 @@ import { useGridStore } from '../store/gridStore';
 import { RelationshipRating as Rating, CLOSE_REASONS, KEEP_APART_REASONS } from '../types';
 
 type RatingFilter = 'all' | 'must-be-close' | 'prefer-close' | 'keep-apart' | 'does-not-matter' | 'not-rated';
-type SortOption = 'default' | 'by-rating' | 'unrated-first';
+type SortOption = 'by-closeness' | 'by-sequence';
 
 export function RelationshipRating() {
   const { activities, activityRelationships, updateRelationship } = useGridStore();
 
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all');
-  const [sortOption, setSortOption] = useState<SortOption>('default');
+  const [sortOption, setSortOption] = useState<SortOption>('by-closeness');
   const [showGuide, setShowGuide] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -96,23 +96,25 @@ export function RelationshipRating() {
 
     const sorted = [...filtered];
 
-    if (sortOption === 'by-rating') {
-      const ratingOrder = { 'must-be-close': 0, 'prefer-close': 1, 'keep-apart': 2, 'does-not-matter': 3 };
+    if (sortOption === 'by-closeness') {
+      const closenessOrder = { 'must-be-close': 0, 'prefer-close': 1, 'keep-apart': 2, 'does-not-matter': 3 };
       sorted.sort((pairA, pairB) => {
         const relA = getRelationship(pairA.a.id, pairA.b.id);
         const relB = getRelationship(pairB.a.id, pairB.b.id);
-        const ratingA = relA?.rating || 'does-not-matter';
-        const ratingB = relB?.rating || 'does-not-matter';
-        return ratingOrder[ratingA] - ratingOrder[ratingB];
+        const closenessA = closenessOrder[relA?.rating || 'does-not-matter'];
+        const closenessB = closenessOrder[relB?.rating || 'does-not-matter'];
+        return closenessA - closenessB;
       });
-    } else if (sortOption === 'unrated-first') {
+    } else if (sortOption === 'by-sequence') {
       sorted.sort((pairA, pairB) => {
-        const relA = getRelationship(pairA.a.id, pairA.b.id);
-        const relB = getRelationship(pairB.a.id, pairB.b.id);
-        const isRatedA = relA && relA.rating !== 'does-not-matter';
-        const isRatedB = relB && relB.rating !== 'does-not-matter';
-        if (isRatedA === isRatedB) return 0;
-        return isRatedA ? 1 : -1;
+        // Pairs with sequence data first, sorted by minimum sequence number
+        const minSeqA = Math.min(pairA.a.sequence_order ?? Infinity, pairA.b.sequence_order ?? Infinity);
+        const minSeqB = Math.min(pairB.a.sequence_order ?? Infinity, pairB.b.sequence_order ?? Infinity);
+        if (minSeqA !== minSeqB) return minSeqA - minSeqB;
+        // Then by distance between the pair
+        const distA = pairA.sequenceDistance ?? Infinity;
+        const distB = pairB.sequenceDistance ?? Infinity;
+        return distA - distB;
       });
     }
 
@@ -373,7 +375,7 @@ export function RelationshipRating() {
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-gray-500" />
                 <span className="text-sm font-medium text-gray-700">Filter & Sort</span>
-                {(selectedActivity !== 'all' || ratingFilter !== 'all' || sortOption !== 'default') && (
+                {(selectedActivity !== 'all' || ratingFilter !== 'all') && (
                   <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">Active</span>
                 )}
               </div>
@@ -410,9 +412,8 @@ export function RelationshipRating() {
                       onChange={(e) => setSortOption(e.target.value as SortOption)}
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="default">Default order</option>
-                      <option value="by-rating">By closeness</option>
-                      <option value="unrated-first">Unset first</option>
+                      <option value="by-closeness">By closeness</option>
+                      <option value="by-sequence">By process sequence</option>
                     </select>
                   </div>
                 </div>
@@ -441,9 +442,9 @@ export function RelationshipRating() {
                   </div>
                 </div>
 
-                {(selectedActivity !== 'all' || ratingFilter !== 'all' || sortOption !== 'default') && (
+                {(selectedActivity !== 'all' || ratingFilter !== 'all') && (
                   <button
-                    onClick={() => { setSelectedActivity('all'); setRatingFilter('all'); setSortOption('default'); }}
+                    onClick={() => { setSelectedActivity('all'); setRatingFilter('all'); }}
                     className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                   >
                     Clear all filters
