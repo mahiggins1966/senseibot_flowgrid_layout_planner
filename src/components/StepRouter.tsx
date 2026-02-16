@@ -17,18 +17,20 @@ import { supabase } from '../lib/supabase';
 import { calculateLayoutScore, LayoutScore } from '../utils/scoring';
 import { exportFloorPlanPDF } from '../utils/pdfExport';
 import { exportSetupInstructions } from '../utils/setupInstructionsExport';
-import { X, CheckCircle, AlertTriangle, XCircle, ChevronRight, FileText, ClipboardList } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, XCircle, ChevronRight, FileText, ClipboardList, PlusCircle } from 'lucide-react';
 
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
 
 interface StepRouterProps {
   currentSubStep: SubStep;
   onSubStepChange: (subStep: SubStep) => void;
+  onTryAnotherLayout?: () => void;
 }
 
 export function StepRouter({
   currentSubStep,
   onSubStepChange,
+  onTryAnotherLayout,
 }: StepRouterProps) {
   const {
     zones,
@@ -292,6 +294,20 @@ export function StepRouter({
                       </button>
                     </div>
                   </div>
+
+                  {/* Try Another Layout */}
+                  {onTryAnotherLayout && (
+                    <div className="pt-3 border-t border-gray-200">
+                      <button
+                        onClick={onTryAnotherLayout}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium rounded-lg transition-colors border border-blue-200"
+                      >
+                        <PlusCircle className="w-4 h-4" />
+                        Try Another Layout
+                      </button>
+                      <p className="text-[10px] text-gray-400 mt-1.5 text-center">Fresh grid, same foundation</p>
+                    </div>
+                  )}
                 </>
               )}
             </div>

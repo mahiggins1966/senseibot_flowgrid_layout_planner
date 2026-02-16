@@ -195,6 +195,8 @@ export function GridCanvas() {
     return distances;
   }, [cursorGridPosition, relatedZonesGlow, zones]);
 
+  const activeLayoutId = useGridStore(state => state.activeLayoutId);
+
   useEffect(() => {
     loadData();
     return () => {
@@ -203,7 +205,7 @@ export function GridCanvas() {
         dragCleanupRef.current = null;
       }
     };
-  }, []);
+  }, [activeLayoutId]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {

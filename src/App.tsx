@@ -6,6 +6,7 @@ import { StepRouter } from './components/StepRouter';
 import { ObjectPopup } from './components/ObjectPopup';
 import { ZoneEditor } from './components/ZoneEditor';
 import { useGridStore } from './store/gridStore';
+import { supabase } from './lib/supabase';
 
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
 type AppView = 'home' | 'dashboard' | 'editor';
@@ -63,6 +64,39 @@ function App() {
     setView('dashboard');
   };
 
+  const handleTryAnotherLayout = async () => {
+    if (!activeProjectId) return;
+
+    // Count existing layouts to name the new one
+    const { data: existingLayouts } = await supabase
+      .from('layouts')
+      .select('id')
+      .eq('project_id', activeProjectId);
+
+    const nextNum = (existingLayouts?.length || 0) + 1;
+
+    const { data: layout, error } = await supabase
+      .from('layouts')
+      .insert({ project_id: activeProjectId, name: `Layout ${nextNum}` })
+      .select()
+      .single();
+
+    if (error || !layout) {
+      console.error('Error creating layout:', error);
+      return;
+    }
+
+    // Switch to the new layout
+    setActiveLayout(layout.id);
+    setCurrentSubStep('2f');
+
+    // Reload data for new layout (foundation stays, layout data resets)
+    loadSettings();
+    loadActivities();
+    loadVolumeTiming();
+    loadActivityRelationships();
+  };
+
   const handleSubStepChange = (subStep: SubStep) => {
     setCurrentSubStep(subStep);
   };
@@ -98,6 +132,7 @@ function App() {
         <StepRouter
           currentSubStep={currentSubStep}
           onSubStepChange={handleSubStepChange}
+          onTryAnotherLayout={handleTryAnotherLayout}
         />
       </div>
 
