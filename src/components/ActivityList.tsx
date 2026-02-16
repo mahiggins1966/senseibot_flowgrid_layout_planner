@@ -1,10 +1,17 @@
+import { useRef, useCallback } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useGridStore } from '../store/gridStore';
 import { supabase } from '../lib/supabase';
 import { Activity, ActivityType } from '../types';
 
+// Debounce delay for database writes (ms)
+const DB_WRITE_DELAY = 500;
+
 export function ActivityList() {
   const { activities, setActivities, deleteActivity } = useGridStore();
+
+  // Track pending DB writes so we can debounce per-field-per-activity
+  const pendingWrites = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const handleAddActivity = async () => {
     const newActivity = {
@@ -29,25 +36,44 @@ export function ActivityList() {
     }
   };
 
-  const handleUpdateActivity = async (id: string, field: keyof Activity, value: string | number) => {
-    const { error } = await supabase
-      .from('activities')
-      .update({ [field]: value })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error updating activity:', error);
-      return;
-    }
-
+  const handleUpdateActivity = useCallback((id: string, field: keyof Activity, value: string | number) => {
+    // 1. Update local state IMMEDIATELY — no waiting for network
     setActivities(
-      activities.map((activity) =>
+      useGridStore.getState().activities.map((activity) =>
         activity.id === id ? { ...activity, [field]: value } : activity
       )
     );
-  };
+
+    // 2. Debounce the database write — only fires after user stops typing
+    const key = `${id}-${field}`;
+    const existing = pendingWrites.current.get(key);
+    if (existing) clearTimeout(existing);
+
+    pendingWrites.current.set(
+      key,
+      setTimeout(async () => {
+        pendingWrites.current.delete(key);
+        const { error } = await supabase
+          .from('activities')
+          .update({ [field]: value })
+          .eq('id', id);
+
+        if (error) {
+          console.error('Error updating activity:', error);
+        }
+      }, DB_WRITE_DELAY)
+    );
+  }, [setActivities]);
 
   const handleDeleteActivity = async (id: string) => {
+    // Cancel any pending writes for this activity
+    pendingWrites.current.forEach((timer, key) => {
+      if (key.startsWith(id)) {
+        clearTimeout(timer);
+        pendingWrites.current.delete(key);
+      }
+    });
+
     const { error } = await supabase
       .from('activities')
       .delete()
