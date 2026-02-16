@@ -79,21 +79,15 @@ export async function exportComparativeAnalysis(projectId: string) {
     const zones = (zonesRes.data || []) as Zone[];
     const corridors = (corridorsRes.data || []) as Corridor[];
 
-    // Use the saved score from DB if available (matches what user saw in editor)
-    // Fall back to recalculating if no saved score
-    let score: LayoutScore;
-    if (layout.score_percentage !== null && layout.score_percentage !== undefined) {
-      // Recalculate to get full factor breakdown, but use same empty dismissedFlags
-      score = calculateLayoutScore(
-        zones, activities, settings, activityRelationships,
-        volumeTiming, doors, corridors, paintedSquares, gridDims, new Set()
-      );
-    } else {
-      score = calculateLayoutScore(
-        zones, activities, settings, activityRelationships,
-        volumeTiming, doors, corridors, paintedSquares, gridDims, new Set()
-      );
-    }
+    // Load dismissed flags for this layout so score matches the editor
+    const dismissedFlags = new Set<string>(
+      Array.isArray(layout.dismissed_flags) ? layout.dismissed_flags : []
+    );
+
+    const score = calculateLayoutScore(
+      zones, activities, settings, activityRelationships,
+      volumeTiming, doors, corridors, paintedSquares, gridDims, dismissedFlags
+    );
 
     const zoneSqFt = zones.reduce((sum, z) => sum + z.grid_width * z.grid_height * sqFt, 0);
     let corridorSqFt = 0;
@@ -425,9 +419,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
     </div>
   </div>
 
-  <div class="note">
-    <strong>Note:</strong> Scores are calculated using a consistent baseline without user-dismissed flags. Individual scores may differ slightly from values shown in the editor if flags have been dismissed during design.
-  </div>
+
 
   <div class="pf">
     <span>${project.name} — Comparative Layout Analysis</span>

@@ -52,6 +52,21 @@ function App() {
       loadActivities();
       loadVolumeTiming();
       loadActivityRelationships();
+
+      // Load dismissed flags for this layout
+      const layoutId = useGridStore.getState().activeLayoutId;
+      if (layoutId) {
+        supabase
+          .from('layouts')
+          .select('dismissed_flags')
+          .eq('id', layoutId)
+          .single()
+          .then(({ data }) => {
+            if (data?.dismissed_flags && Array.isArray(data.dismissed_flags)) {
+              useGridStore.setState({ dismissedFlags: new Set(data.dismissed_flags) });
+            }
+          });
+      }
     }
   }, [view, loadSettings, loadActivities, loadVolumeTiming, loadActivityRelationships]);
 

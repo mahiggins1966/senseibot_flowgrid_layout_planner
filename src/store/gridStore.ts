@@ -733,6 +733,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
     selectedObject: null,
     selectedDoor: null,
     selectedCorridor: null,
+    dismissedFlags: new Set(),
   }),
 
   setCurrentSubStep: (subStep) => set({ currentSubStep: subStep }),
@@ -755,17 +756,43 @@ export const useGridStore = create<GridStore>((set, get) => ({
 
   toggleSafetyOverlay: () => set((state) => ({ safetyOverlayEnabled: !state.safetyOverlayEnabled })),
 
-  dismissFlag: (flagId) => set((state) => {
-    const newDismissed = new Set(state.dismissedFlags);
-    newDismissed.add(flagId);
-    return { dismissedFlags: newDismissed };
-  }),
+  dismissFlag: (flagId) => {
+    set((state) => {
+      const newDismissed = new Set(state.dismissedFlags);
+      newDismissed.add(flagId);
+      return { dismissedFlags: newDismissed };
+    });
+    // Persist to DB
+    const { activeLayoutId, dismissedFlags } = get();
+    if (activeLayoutId) {
+      supabase
+        .from('layouts')
+        .update({ dismissed_flags: Array.from(dismissedFlags) })
+        .eq('id', activeLayoutId)
+        .then(({ error }) => {
+          if (error) console.error('Error saving dismissed flags:', error);
+        });
+    }
+  },
 
-  undismissFlag: (flagId) => set((state) => {
-    const newDismissed = new Set(state.dismissedFlags);
-    newDismissed.delete(flagId);
-    return { dismissedFlags: newDismissed };
-  }),
+  undismissFlag: (flagId) => {
+    set((state) => {
+      const newDismissed = new Set(state.dismissedFlags);
+      newDismissed.delete(flagId);
+      return { dismissedFlags: newDismissed };
+    });
+    // Persist to DB
+    const { activeLayoutId, dismissedFlags } = get();
+    if (activeLayoutId) {
+      supabase
+        .from('layouts')
+        .update({ dismissed_flags: Array.from(dismissedFlags) })
+        .eq('id', activeLayoutId)
+        .then(({ error }) => {
+          if (error) console.error('Error saving dismissed flags:', error);
+        });
+    }
+  },
 
   isFlagDismissed: (flagId) => {
     const state = get();
