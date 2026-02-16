@@ -187,7 +187,7 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
                   autoFocus
                 />
               ) : (
-                <div className="flex items-center gap-2 group/name">
+                <div className="flex items-center gap-2">
                   <h1
                     className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
                     onClick={() => { setEditingProjectName(true); setTempProjectName(project.name); }}
@@ -196,7 +196,7 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
                   </h1>
                   <button
                     onClick={() => { setEditingProjectName(true); setTempProjectName(project.name); }}
-                    className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors opacity-0 group-hover/name:opacity-100"
+                    className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
                     title="Rename project"
                   >
                     <Pencil className="w-4 h-4" />
