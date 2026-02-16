@@ -241,7 +241,7 @@ export function RelationshipRating() {
                 <span className="shrink-0 mt-0.5 px-2.5 py-1 rounded text-xs font-bold bg-green-600 text-white">Must be close</span>
                 <div className="text-sm text-gray-700">
                   <p className="font-medium text-gray-900">Place directly next to each other</p>
-                  <p className="text-gray-500 mt-0.5">These areas must be adjacent or within 1–2 squares. Material flows directly and continuously between them, or they share the same workers.</p>
+                  <p className="text-gray-500 mt-0.5">These areas must be adjacent or within 1–2 grid squares (the square size you set in Step 2A). Material flows directly and continuously between them, or they share the same workers.</p>
                   <p className="text-gray-400 mt-0.5 italic">Example: Receiving → Breakdown & Sort — every incoming shipment moves straight from one to the other.</p>
                 </div>
               </div>
