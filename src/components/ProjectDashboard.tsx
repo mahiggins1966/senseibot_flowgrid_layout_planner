@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, Plus, Layers, Clock, Trash2, Play, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Layers, Clock, Trash2, Play, Pencil, FileText, ClipboardList, BarChart3 } from 'lucide-react';
+import { exportComparativeAnalysis } from '../utils/comparativeExport';
+import { exportSetupInstructions } from '../utils/setupInstructionsExport';
+import { Activity, Zone, Corridor, Door } from '../types';
 
 interface Layout {
   id: string;
@@ -44,6 +47,7 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
   const [tempName, setTempName] = useState('');
   const [editingProjectName, setEditingProjectName] = useState(false);
   const [tempProjectName, setTempProjectName] = useState('');
+  const [exportingLayout, setExportingLayout] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboard();
@@ -91,7 +95,6 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
     }
 
     if (data) {
-      // Open it straight to the layout step
       onOpenLayout(projectId, data.id, '2f');
     }
   };
@@ -104,21 +107,18 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
     }
     if (!confirm('Delete this layout and all its zones/corridors/objects? This cannot be undone.')) return;
 
-    // Delete layout-scoped data first, then the layout
     await Promise.all([
       supabase.from('zones').delete().eq('layout_id', layoutId),
       supabase.from('corridors').delete().eq('layout_id', layoutId),
       supabase.from('placed_objects').delete().eq('layout_id', layoutId),
     ]);
     await supabase.from('layouts').delete().eq('id', layoutId);
-
     setLayouts(prev => prev.filter(l => l.id !== layoutId));
   };
 
   const handleRenameLayout = async (layoutId: string) => {
     const name = tempName.trim();
     if (!name) { setEditingName(null); return; }
-
     await supabase.from('layouts').update({ name }).eq('id', layoutId);
     setLayouts(prev => prev.map(l => l.id === layoutId ? { ...l, name } : l));
     setEditingName(null);
@@ -127,10 +127,49 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
   const handleRenameProject = async () => {
     const name = tempProjectName.trim();
     if (!name || !project) { setEditingProjectName(false); return; }
-
     await supabase.from('projects').update({ name }).eq('id', project.id);
     setProject(prev => prev ? { ...prev, name } : prev);
     setEditingProjectName(false);
+  };
+
+  // Load layout data from DB and export Setup Instructions
+  const handleExportSetupInstructions = async (e: React.MouseEvent, layoutId: string) => {
+    e.stopPropagation();
+    setExportingLayout(layoutId);
+
+    const [settingsRes, zonesRes, activitiesRes, corridorsRes, doorsRes] = await Promise.all([
+      supabase.from('app_settings').select('*').eq('project_id', projectId).maybeSingle(),
+      supabase.from('zones').select('*').eq('layout_id', layoutId),
+      supabase.from('activities').select('*').eq('project_id', projectId),
+      supabase.from('corridors').select('*').eq('layout_id', layoutId),
+      supabase.from('doors').select('*').eq('project_id', projectId),
+    ]);
+
+    const s = settingsRes.data;
+    if (!s) { alert('No settings found.'); setExportingLayout(null); return; }
+
+    exportSetupInstructions({
+      zones: (zonesRes.data || []) as Zone[],
+      activities: (activitiesRes.data || []) as Activity[],
+      corridors: (corridorsRes.data || []) as Corridor[],
+      doors: (doorsRes.data || []) as Door[],
+      facilityWidth: s.facility_width,
+      facilityHeight: s.facility_height,
+      squareSize: s.square_size,
+    });
+
+    setExportingLayout(null);
+  };
+
+  // Open the layout at step 2F so user can export Floor Plan PDF with the grid image
+  const handleExportFloorPlan = (e: React.MouseEvent, layoutId: string) => {
+    e.stopPropagation();
+    onOpenLayout(projectId, layoutId, '2f');
+  };
+
+  const handleComparativeAnalysis = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await exportComparativeAnalysis(projectId);
   };
 
   const formatDate = (dateStr: string) => {
@@ -252,13 +291,24 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Layouts</h2>
-            <button
-              onClick={handleCreateLayout}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              New Blank Layout
-            </button>
+            <div className="flex items-center gap-2">
+              {layouts.length >= 2 && (
+                <button
+                  onClick={handleComparativeAnalysis}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Compare Layouts
+                </button>
+              )}
+              <button
+                onClick={handleCreateLayout}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                New Blank Layout
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-3">
@@ -319,6 +369,21 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 ml-4">
+                    {/* Per-layout exports */}
+                    <button
+                      onClick={(e) => handleExportFloorPlan(e, layout.id)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      title="Export Floor Plan PDF (opens layout)"
+                    >
+                      <FileText className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => handleExportSetupInstructions(e, layout.id)}
+                      className={`p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 ${exportingLayout === layout.id ? 'animate-pulse' : ''}`}
+                      title="Export Setup Instructions"
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={(e) => handleDeleteLayout(e, layout.id)}
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
