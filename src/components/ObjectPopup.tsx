@@ -35,6 +35,7 @@ export function ObjectPopup() {
   };
 
   const handleDuplicate = async () => {
+    const { activeLayoutId } = useGridStore.getState();
     const { data, error } = await supabase
       .from('placed_objects')
       .insert([{
@@ -45,6 +46,7 @@ export function ObjectPopup() {
         grid_height: selectedObject.grid_height,
         color: selectedObject.color,
         rotation: selectedObject.rotation,
+        layout_id: activeLayoutId,
       }])
       .select()
       .maybeSingle();

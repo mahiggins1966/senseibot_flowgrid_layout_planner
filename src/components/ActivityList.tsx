@@ -23,9 +23,10 @@ export function ActivityList() {
       sort_order: activities.length,
     };
 
+    const { activeProjectId } = useGridStore.getState();
     const { data, error } = await supabase
       .from('activities')
-      .insert([newActivity])
+      .insert([{ ...newActivity, project_id: activeProjectId }])
       .select()
       .single();
 

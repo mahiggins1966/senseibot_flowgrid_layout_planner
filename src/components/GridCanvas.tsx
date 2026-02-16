@@ -261,12 +261,13 @@ export function GridCanvas() {
 
 
   const loadData = async () => {
+    const { activeProjectId, activeLayoutId } = useGridStore.getState();
     const [zonesResult, objectsResult, doorsResult, corridorsResult, paintedResult] = await Promise.all([
-      supabase.from('zones').select('*').order('created_at', { ascending: true }),
-      supabase.from('placed_objects').select('*').order('created_at', { ascending: true }),
-      supabase.from('doors').select('*').order('created_at', { ascending: true }),
-      supabase.from('corridors').select('*').order('created_at', { ascending: true }),
-      supabase.from('painted_squares').select('*').order('created_at', { ascending: true }),
+      supabase.from('zones').select('*').eq('layout_id', activeLayoutId).order('created_at', { ascending: true }),
+      supabase.from('placed_objects').select('*').eq('layout_id', activeLayoutId).order('created_at', { ascending: true }),
+      supabase.from('doors').select('*').eq('project_id', activeProjectId).order('created_at', { ascending: true }),
+      supabase.from('corridors').select('*').eq('layout_id', activeLayoutId).order('created_at', { ascending: true }),
+      supabase.from('painted_squares').select('*').eq('project_id', activeProjectId).order('created_at', { ascending: true }),
     ]);
 
     if (zonesResult.data) {
@@ -300,10 +301,12 @@ export function GridCanvas() {
     storePaintSquare(row, col);
 
     if (paintMode === 'permanent' || paintMode === 'semi-fixed') {
+      const { activeProjectId } = useGridStore.getState();
       await supabase.from('painted_squares').upsert({
         row,
         col,
         type: paintMode,
+        project_id: activeProjectId,
       }, {
         onConflict: 'row,col'
       });
@@ -313,7 +316,8 @@ export function GridCanvas() {
   const unpaintSquare = async (row: number, col: number) => {
     storeUnpaintSquare(row, col);
 
-    await supabase.from('painted_squares').delete().match({ row, col });
+    const { activeProjectId: projId } = useGridStore.getState();
+    await supabase.from('painted_squares').delete().match({ row, col, project_id: projId });
   };
 
   const getBoundaryEdge = (row: number, col: number): 'top' | 'bottom' | 'left' | 'right' | null => {
@@ -355,6 +359,7 @@ export function GridCanvas() {
     const gridX = Math.min(startCol, endCol);
     const gridY = Math.min(startRow, endRow);
 
+    const { activeProjectId: pid } = useGridStore.getState();
     const { data, error } = await supabase
       .from('doors')
       .insert([{
@@ -364,6 +369,7 @@ export function GridCanvas() {
         width,
         type: 'personnel',
         edge,
+        project_id: pid,
       }])
       .select()
       .maybeSingle();
@@ -455,6 +461,7 @@ export function GridCanvas() {
     const color = getCorridorColor(type);
     const defaultName = `Corridor ${corridors.length + 1}`;
 
+    const { activeLayoutId: lid } = useGridStore.getState();
     const { data, error } = await supabase
       .from('corridors')
       .insert({
@@ -466,6 +473,7 @@ export function GridCanvas() {
         end_grid_y: end.row,
         width,
         color,
+        layout_id: lid,
       })
       .select()
       .maybeSingle();
@@ -532,6 +540,7 @@ export function GridCanvas() {
       }
     }
 
+    const { activeLayoutId: zoneLayoutId } = useGridStore.getState();
     const { data, error } = await supabase
       .from('zones')
       .insert([{
@@ -543,6 +552,7 @@ export function GridCanvas() {
         color: zoneColor,
         group_type: 'flexible',
         activity_id: activityId,
+        layout_id: zoneLayoutId,
       }])
       .select()
       .maybeSingle();
@@ -670,6 +680,7 @@ export function GridCanvas() {
         return;
       }
 
+      const { activeLayoutId: objLayoutId } = useGridStore.getState();
       const { data, error } = await supabase
         .from('placed_objects')
         .insert([{
@@ -680,6 +691,7 @@ export function GridCanvas() {
           grid_height: draggingObject.grid_length,
           color: draggingObject.color,
           rotation: 0,
+          layout_id: objLayoutId,
         }])
         .select()
         .maybeSingle();

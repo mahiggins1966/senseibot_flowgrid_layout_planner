@@ -13,6 +13,8 @@ export interface PaintedSquare {
 }
 
 interface GridStore {
+  activeProjectId: string;
+  activeLayoutId: string;
   settings: GridSettings;
   viewport: ViewportState;
   customObjects: CustomObject[];
@@ -124,6 +126,8 @@ interface GridStore {
   setActivityRelationships: (relationships: ActivityRelationship[]) => void;
   updateRelationship: (activityAId: string, activityBId: string, rating: string, reason?: string) => void;
   loadActivityRelationships: () => Promise<void>;
+  setActiveProject: (projectId: string) => void;
+  setActiveLayout: (layoutId: string) => void;
   setCurrentSubStep: (subStep: SubStep) => void;
   canInteractWithDoors: () => boolean;
   canInteractWithZones: () => boolean;
@@ -138,7 +142,13 @@ interface GridStore {
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 5;
 
+// Default IDs from migration — single project/layout for now
+const DEFAULT_PROJECT_ID = '00000000-0000-0000-0000-000000000001';
+const DEFAULT_LAYOUT_ID = '00000000-0000-0000-0000-000000000002';
+
 export const useGridStore = create<GridStore>((set, get) => ({
+  activeProjectId: DEFAULT_PROJECT_ID,
+  activeLayoutId: DEFAULT_LAYOUT_ID,
   settings: {
     facilityWidth: 155,
     facilityHeight: 155,
@@ -450,9 +460,11 @@ export const useGridStore = create<GridStore>((set, get) => ({
   },
 
   loadSettings: async () => {
+    const { activeProjectId } = get();
     const { data, error } = await supabase
       .from('app_settings')
       .select('*')
+      .eq('project_id', activeProjectId)
       .maybeSingle();
 
     if (error) {
@@ -478,10 +490,12 @@ export const useGridStore = create<GridStore>((set, get) => ({
 
   saveSettingsToDb: async () => {
     const state = get();
+    const { activeProjectId } = state;
 
     const { data: existing } = await supabase
       .from('app_settings')
       .select('id')
+      .eq('project_id', activeProjectId)
       .maybeSingle();
 
     const settingsData = {
@@ -493,6 +507,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
       unit_footprint_sqft: state.settings.unitFootprintSqFt,
       stacking_height: state.settings.stackingHeight,
       access_factor: state.settings.accessFactor,
+      project_id: activeProjectId,
       updated_at: new Date().toISOString(),
     };
 
@@ -535,9 +550,11 @@ export const useGridStore = create<GridStore>((set, get) => ({
   })),
 
   loadActivities: async () => {
+    const { activeProjectId } = get();
     const { data, error } = await supabase
       .from('activities')
       .select('*')
+      .eq('project_id', activeProjectId)
       .order('sort_order', { ascending: true });
 
     if (error) {
@@ -584,10 +601,12 @@ export const useGridStore = create<GridStore>((set, get) => ({
         return;
       }
     } else {
+      const { activeProjectId } = get();
       const { error } = await supabase
         .from('volume_timing')
         .insert([{
           activity_id: activityId,
+          project_id: activeProjectId,
           ...updateData,
         }]);
 
@@ -616,9 +635,11 @@ export const useGridStore = create<GridStore>((set, get) => ({
   },
 
   loadVolumeTiming: async () => {
+    const { activeProjectId } = get();
     const { data, error } = await supabase
       .from('volume_timing')
-      .select('*');
+      .select('*')
+      .eq('project_id', activeProjectId);
 
     if (error) {
       console.error('Error loading volume timing:', error);
@@ -655,6 +676,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
         return;
       }
     } else {
+      const { activeProjectId } = get();
       const { error } = await supabase
         .from('activity_relationships')
         .insert([{
@@ -662,6 +684,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
           activity_b_id: activityBId,
           rating,
           reason,
+          project_id: activeProjectId,
         }]);
 
       if (error) {
@@ -674,9 +697,11 @@ export const useGridStore = create<GridStore>((set, get) => ({
   },
 
   loadActivityRelationships: async () => {
+    const { activeProjectId } = get();
     const { data, error } = await supabase
       .from('activity_relationships')
-      .select('*');
+      .select('*')
+      .eq('project_id', activeProjectId);
 
     if (error) {
       console.error('Error loading activity relationships:', error);
@@ -687,6 +712,10 @@ export const useGridStore = create<GridStore>((set, get) => ({
       set({ activityRelationships: data });
     }
   },
+
+  setActiveProject: (projectId) => set({ activeProjectId: projectId }),
+
+  setActiveLayout: (layoutId) => set({ activeLayoutId: layoutId }),
 
   setCurrentSubStep: (subStep) => set({ currentSubStep: subStep }),
 

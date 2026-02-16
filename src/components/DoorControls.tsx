@@ -34,9 +34,11 @@ export function DoorControls() {
   }, []);
 
   const loadDoors = async () => {
+    const { activeProjectId } = useGridStore.getState();
     const { data, error } = await supabase
       .from('doors')
       .select('*')
+      .eq('project_id', activeProjectId)
       .order('created_at', { ascending: true });
 
     if (error) {
