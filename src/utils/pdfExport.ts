@@ -12,22 +12,65 @@ interface ExportData {
   activityCount: number;
 }
 
-export function exportFloorPlanPDF(data?: ExportData) {
+/**
+ * Captures the grid SVG as a PNG data URL via canvas rendering.
+ * This ensures the image survives being placed in a new window
+ * where Tailwind / app CSS is not available.
+ */
+function captureSvgAsImage(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const svg = document.querySelector('svg');
+    if (!svg) { reject('SVG not found'); return; }
+
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    // Force explicit dimensions so the canvas knows the size
+    const bbox = svg.getBoundingClientRect();
+    clone.setAttribute('width', String(bbox.width));
+    clone.setAttribute('height', String(bbox.height));
+
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(clone);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      // Render at 2x for crisp print quality
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = bbox.width * scale;
+      canvas.height = bbox.height * scale;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject('Canvas context failed'); return; }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject('Image render failed');
+    };
+    img.src = url;
+  });
+}
+
+export async function exportFloorPlanPDF(data?: ExportData) {
+  let imageDataUrl: string;
+  try {
+    imageDataUrl = await captureSvgAsImage();
+  } catch (err) {
+    alert('Could not capture the floor plan image. Make sure the grid is visible.');
+    return;
+  }
+
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert('Please allow popups to export the floor plan.');
     return;
   }
-
-  const svg = document.querySelector('svg');
-  if (!svg) {
-    alert('Grid not found. Make sure you are on the layout view.');
-    return;
-  }
-
-  const svgClone = svg.cloneNode(true) as SVGSVGElement;
-  // Remove any interactive cursors
-  svgClone.style.cursor = 'default';
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -179,8 +222,8 @@ export function exportFloorPlanPDF(data?: ExportData) {
     .layout-meta { text-align: right; font-size: 12px; color: #6b7280; }
     .layout-meta div { margin-bottom: 2px; }
 
-    .svg-container { text-align: center; margin: 0 auto; }
-    .svg-container svg { max-width: 100%; max-height: 65vh; height: auto; display: block; margin: 0 auto; }
+    .plan-image { text-align: center; margin: 0 auto; }
+    .plan-image img { max-width: 100%; max-height: 65vh; height: auto; display: block; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 4px; }
 
     .layout-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af; }
 
@@ -253,8 +296,8 @@ export function exportFloorPlanPDF(data?: ExportData) {
       </div>
     </div>
 
-    <div class="svg-container">
-      ${svgClone.outerHTML}
+    <div class="plan-image">
+      <img src="${imageDataUrl}" alt="Floor Layout Plan" />
     </div>
 
     <div class="layout-footer">
