@@ -12,7 +12,7 @@ export function RelationshipRating() {
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all');
   const [sortOption, setSortOption] = useState<SortOption>('default');
-  const [showGuide, setShowGuide] = useState(true);
+  const [showGuide, setShowGuide] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   // Check if we have sequence data to offer defaults
@@ -274,28 +274,7 @@ export function RelationshipRating() {
               </div>
             </div>
 
-            {/* How to approach it */}
-            <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700">
-              <p className="font-semibold text-gray-900 mb-2">Suggested approach:</p>
-              <div className="space-y-1.5">
-                <p>
-                  <span className="font-semibold text-purple-700">Step 1:</span> If you assigned process sequence numbers in 2C, click "Apply Defaults" below. This auto-fills most pairs based on your process flow.
-                </p>
-                <p>
-                  <span className="font-semibold text-green-700">Step 2:</span> Scan through the "Must be close" pairs — do they look right? Adjust any that don't match your operations.
-                </p>
-                <p>
-                  <span className="font-semibold text-red-700">Step 3:</span> Look for pairs that should be "Keep apart" — safety, noise, or traffic conflicts the sequence doesn't know about.
-                </p>
-                <p>
-                  <span className="font-semibold text-gray-500">Step 4:</span> Everything else can stay as "No preference" — that's perfectly fine for most pairs.
-                </p>
-              </div>
-            </div>
 
-            <p className="text-xs text-gray-400">
-              Tip: You don't have to rate every single pair. Focus on the ones that matter — the "Must be close" and "Keep apart" pairs have the biggest impact on your layout. "No preference" is the safe default.
-            </p>
           </div>
         )}
       </div>
@@ -310,20 +289,25 @@ export function RelationshipRating() {
               <Zap className="w-5 h-5 text-purple-600" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-purple-900 mb-1">
-                Start Here — Auto-fill from Your Process Sequence
+              <p className="text-sm font-bold text-purple-900 mb-2">
+                Suggested Approach
               </p>
-              <p className="text-sm text-purple-700 mb-1">
-                You assigned sequence numbers in Step 2C. Based on that flow order, the tool can
-                auto-fill {defaultableCount} pair{defaultableCount !== 1 ? 's' : ''}:
-              </p>
-              <div className="text-sm text-purple-700 mb-3 space-y-0.5">
-                <p>• Activities one step apart → <strong>Must be close</strong></p>
-                <p>• Activities two steps apart → <strong>Prefer close</strong></p>
-                <p>• Activities three or more steps apart → <strong>No preference</strong></p>
+              <div className="text-sm text-purple-800 space-y-1.5 mb-3">
+                <p>
+                  <span className="font-semibold">Step 1:</span> Click "Apply Defaults" below. Your process sequence from Step 2C will auto-fill {defaultableCount} pair{defaultableCount !== 1 ? 's' : ''} — adjacent steps become "Must be close," two steps apart become "Prefer close," and everything else stays "No preference."
+                </p>
+                <p>
+                  <span className="font-semibold">Step 2:</span> Scan through the "Must be close" pairs — do they look right? Adjust any that don't match your actual operations.
+                </p>
+                <p>
+                  <span className="font-semibold">Step 3:</span> Look for pairs that should be "Keep apart" — safety hazards, noise, or traffic conflicts that the sequence doesn't know about.
+                </p>
+                <p>
+                  <span className="font-semibold">Step 4:</span> Everything else can stay as "No preference" — that's perfectly fine for most pairs.
+                </p>
               </div>
               <p className="text-xs text-purple-600 mb-3">
-                You can change any of them afterward — this just gives you a head start.
+                Tip: You don't have to rate every single pair. Focus on the ones that matter — the "Must be close" and "Keep apart" pairs have the biggest impact on your layout. "No preference" is the safe default.
               </p>
               <button
                 onClick={() => {
