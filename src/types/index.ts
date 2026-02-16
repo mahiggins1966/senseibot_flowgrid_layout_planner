@@ -158,6 +158,8 @@ export interface VolumeTiming {
   peak_volume_per_shift: number;
   typical_secondary_volume_per_shift?: number;
   peak_secondary_volume_per_shift?: number;
+  typical_units_on_floor: number;
+  peak_units_on_floor: number;
   percentage: number;
   created_at: string;
 }

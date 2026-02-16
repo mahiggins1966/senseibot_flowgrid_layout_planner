@@ -126,7 +126,7 @@ interface GridStore {
   deleteActivity: (id: string) => void;
   loadActivities: () => Promise<void>;
   setVolumeTiming: (volumeTiming: VolumeTiming[]) => void;
-  updateVolumeTiming: (activityId: string, typicalVolume: number, peakVolume: number, typicalSecondaryVolume?: number, peakSecondaryVolume?: number) => void;
+  updateVolumeTiming: (activityId: string, typicalVolume: number, peakVolume: number, typicalSecondaryVolume?: number, peakSecondaryVolume?: number, typicalUnitsOnFloor?: number, peakUnitsOnFloor?: number) => void;
   loadVolumeTiming: () => Promise<void>;
   setActivityRelationships: (relationships: ActivityRelationship[]) => void;
   updateRelationship: (activityAId: string, activityBId: string, rating: string, reason?: string) => void;
@@ -616,7 +616,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
 
   setVolumeTiming: (volumeTiming) => set({ volumeTiming }),
 
-  updateVolumeTiming: async (activityId, typicalVolume, peakVolume, typicalSecondaryVolume, peakSecondaryVolume) => {
+  updateVolumeTiming: async (activityId, typicalVolume, peakVolume, typicalSecondaryVolume, peakSecondaryVolume, typicalUnitsOnFloor, peakUnitsOnFloor) => {
     const { data: existing } = await supabase
       .from('volume_timing')
       .select('*')
@@ -635,6 +635,14 @@ export const useGridStore = create<GridStore>((set, get) => ({
 
     if (peakSecondaryVolume !== undefined) {
       updateData.peak_secondary_volume_per_shift = peakSecondaryVolume;
+    }
+
+    if (typicalUnitsOnFloor !== undefined) {
+      updateData.typical_units_on_floor = typicalUnitsOnFloor;
+    }
+
+    if (peakUnitsOnFloor !== undefined) {
+      updateData.peak_units_on_floor = peakUnitsOnFloor;
     }
 
     if (existing) {

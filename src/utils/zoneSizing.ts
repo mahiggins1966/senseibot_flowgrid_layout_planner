@@ -1,8 +1,10 @@
 // Zone Sizing Calculator
 // Computes recommended minimum grid squares for each activity based on:
-// - Volume data from Step 2D (peak_volume_per_shift)
+// - Unit counts from Step 2D (peak_units_on_floor)
 // - Sizing assumptions from Step 2A (unit footprint, stacking, access factor)
 // - Grid square size from Step 2A
+//
+// Formula: recommendedSquares = ceil(peakUnits × unitFootprint × accessFactor ÷ stackingHeight ÷ squareSize²)
 
 import { Activity, VolumeTiming, GridSettings } from '../types';
 
@@ -10,7 +12,7 @@ export interface SizingRecommendation {
   activityId: string;
   activityName: string;
   activityType: string;
-  peakVolume: number;
+  peakUnits: number;
   floorAreaSqFt: number;
   recommendedSquares: number;
   squareSizeFt: number;
@@ -18,6 +20,8 @@ export interface SizingRecommendation {
   accessFactor: number;
   stackingHeight: number;
   effectiveSqFtPerUnit: number;
+  // Keep for backward compat
+  peakVolume: number;
 }
 
 export function calculateZoneSizing(
@@ -25,7 +29,7 @@ export function calculateZoneSizing(
   volumeTiming: VolumeTiming[],
   settings: GridSettings
 ): SizingRecommendation[] {
-  const unitFootprint = settings.unitFootprintSqFt ?? 4;
+  const unitFootprint = settings.unitFootprintSqFt ?? 13.3; // Default: standard pallet
   const stacking = settings.stackingHeight ?? 1;
   const access = settings.accessFactor ?? 1.3;
   const squareSize = settings.squareSize;
@@ -41,19 +45,21 @@ export function calculateZoneSizing(
     }
 
     const vt = volumeTiming.find(v => v.activity_id === activity.id);
-    if (!vt || vt.peak_volume_per_shift <= 0) {
-      continue;
-    }
+    if (!vt) continue;
 
-    const peakVolume = vt.peak_volume_per_shift;
-    const floorAreaSqFt = peakVolume * effectiveSqFtPerUnit;
+    // Use peak units on floor (the dimensional count), not weight-based volume
+    const peakUnits = vt.peak_units_on_floor ?? 0;
+    if (peakUnits <= 0) continue;
+
+    const floorAreaSqFt = peakUnits * effectiveSqFtPerUnit;
     const recommendedSquares = Math.ceil(floorAreaSqFt / sqFtPerSquare);
 
     recommendations.push({
       activityId: activity.id,
       activityName: activity.name,
       activityType: activity.type,
-      peakVolume,
+      peakUnits,
+      peakVolume: peakUnits, // backward compat alias
       floorAreaSqFt,
       recommendedSquares,
       squareSizeFt: squareSize,

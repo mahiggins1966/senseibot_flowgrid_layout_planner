@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { CheckCircle, Circle } from 'lucide-react';
 import { useGridStore } from '../store/gridStore';
-import { Activity } from '../types';
+import { Activity, UNIT_FOOTPRINT_OPTIONS } from '../types';
 import { calculateZoneSizing, SizingRecommendation } from '../utils/zoneSizing';
 
 export function ActivityZoneDrawer() {
@@ -101,7 +101,7 @@ export function ActivityZoneDrawer() {
         const actualSquares = newZone.grid_width * newZone.grid_height;
         if (actualSquares < rec.recommendedSquares) {
           feedback.push({
-            message: `${newActivityName} is ${actualSquares} squares — recommended minimum is ${rec.recommendedSquares} based on ${rec.peakVolume} peak units`,
+            message: `${newActivityName} is ${actualSquares} squares — recommended minimum is ${rec.recommendedSquares} based on ${rec.peakUnits} peak units on floor`,
             type: 'warning'
           });
         } else {
@@ -175,6 +175,16 @@ export function ActivityZoneDrawer() {
     if (unit === 'custom') return settings.primaryFlowUnitCustom || 'units';
     return unit;
   };
+
+  // Floor unit label from 2A (pallets, boxes, totes)
+  const getFloorUnitLabel = () => {
+    const flowUnit = settings.typicalFlowUnit || 'pallet';
+    const option = UNIT_FOOTPRINT_OPTIONS.find(o => o.value === flowUnit);
+    if (flowUnit === 'custom') return 'units';
+    if (option) return option.value + 's';
+    return 'units';
+  };
+  const floorUnitLabel = getFloorUnitLabel();
 
   const getActivityColor = (activity: Activity) => {
     if (activity.type === 'corridor') return '#FFFFFF';
@@ -377,7 +387,7 @@ export function ActivityZoneDrawer() {
                 if (currentSquares < rec.recommendedSquares) {
                   return (
                     <div className="mt-2 p-2 bg-amber-50 border border-amber-300 rounded text-xs text-amber-800">
-                      ⚠ Recommended minimum is <span className="font-bold">{rec.recommendedSquares} squares</span> based on {rec.peakVolume} peak {formatUnit(settings.primaryFlowUnit)} × {rec.effectiveSqFtPerUnit.toFixed(1)} sq ft each. You're {rec.recommendedSquares - currentSquares} squares short.
+                      ⚠ Recommended minimum is <span className="font-bold">{rec.recommendedSquares} squares</span> based on {rec.peakUnits} peak {floorUnitLabel} × {rec.effectiveSqFtPerUnit.toFixed(1)} sq ft each. You're {rec.recommendedSquares - currentSquares} squares short.
                     </div>
                   );
                 }
@@ -498,7 +508,7 @@ export function ActivityZoneDrawer() {
                     {!isPlaced && rec && (
                       <div className="mt-2 space-y-1 text-xs">
                         <div className="text-gray-700 font-medium">
-                          {rec.peakVolume.toLocaleString()} peak {formatUnit(settings.primaryFlowUnit)}
+                          {rec.peakUnits.toLocaleString()} peak {floorUnitLabel}
                         </div>
                         <div className="text-blue-700 font-semibold bg-blue-50 px-2 py-1 rounded inline-block">
                           Recommended: {rec.recommendedSquares} squares ({Math.round(rec.floorAreaSqFt)} sq ft)
