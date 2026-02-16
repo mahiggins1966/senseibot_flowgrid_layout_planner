@@ -11,11 +11,11 @@ export function Step2ECloseness({ onNext }: Step2EClosenessProps) {
         <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            2E: Rate Which Areas Need to Be Close
+            2E: Set Closeness Between Areas
           </h1>
           <p className="text-lg text-gray-600">
             This step tells the layout tool which activity areas to place next to each other
-            and which ones to keep separated. The ratings you set here directly control
+            and which ones to keep separated. The closeness levels you set here directly control
             how the floor plan gets arranged in the next step.
           </p>
         </div>
