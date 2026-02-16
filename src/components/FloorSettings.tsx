@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGridStore } from '../store/gridStore';
 import { US_SQUARE_SIZE_OPTIONS, METRIC_SQUARE_SIZE_OPTIONS, DimensionUnit, MeasurementSystem, UNIT_FOOTPRINT_OPTIONS, STACKING_HEIGHT_OPTIONS, ACCESS_FACTOR_OPTIONS } from '../types';
 import { DoorControls } from './DoorControls';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const FEET_TO_METERS = 0.3048;
 const METERS_TO_FEET = 3.28084;
@@ -10,7 +11,8 @@ export function FloorSettings() {
   const { settings, updateSettings, getGridDimensions, doors } = useGridStore();
   const gridDimensions = getGridDimensions();
 
-  const [activeTab, setActiveTab] = useState<'facility' | 'doors'>('facility');
+  const [facilityOpen, setFacilityOpen] = useState(true);
+  const [doorsOpen, setDoorsOpen] = useState(true);
 
   const [widthUnit, setWidthUnit] = useState<DimensionUnit>(
     settings.measurementSystem === 'US' ? 'feet' : 'meters'
@@ -135,42 +137,29 @@ export function FloorSettings() {
   const effectiveSqFt = ((settings.unitFootprintSqFt || 4) * (settings.accessFactor || 1.3) / (settings.stackingHeight || 1));
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-4">
+    <div className="space-y-3">
+
+      {/* ── Facility Settings ── */}
+      <div className="border border-gray-200 rounded-lg overflow-hidden">
         <button
-          onClick={() => setActiveTab('facility')}
-          className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors border-b-2 ${
-            activeTab === 'facility'
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
+          onClick={() => setFacilityOpen(!facilityOpen)}
+          className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
         >
-          Facility
-        </button>
-        <button
-          onClick={() => setActiveTab('doors')}
-          className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors border-b-2 flex items-center justify-center gap-1.5 ${
-            activeTab === 'doors'
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          Doors
-          {doors.length > 0 && (
-            <span className={`inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full ${
-              activeTab === 'doors' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
-            }`}>
-              {doors.length}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-900">Facility Settings</span>
+            <span className="text-xs text-gray-500">
+              {gridDimensions.cols}×{gridDimensions.rows} grid • {usableFloorDisplay}
             </span>
+          </div>
+          {facilityOpen ? (
+            <ChevronUp className="w-4 h-4 text-gray-500" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-gray-500" />
           )}
         </button>
-      </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-y-auto">
-        {activeTab === 'facility' ? (
-          <div className="space-y-4">
+        {facilityOpen && (
+          <div className="p-4 space-y-4">
             {/* Measurement System */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -200,76 +189,76 @@ export function FloorSettings() {
               </div>
             </div>
 
-            {/* Width and Height side by side */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Width</label>
-                <div className="flex gap-1">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={editingWidth ?? getDisplayValue(settings.facilityWidth, widthUnit).toString()}
-                    onChange={handleWidthChange}
-                    onBlur={handleWidthBlur}
-                    className="flex-1 min-w-0 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                  <div className="flex rounded-md border border-gray-300 overflow-hidden flex-shrink-0">
-                    <button
-                      onClick={() => setWidthUnit(primaryUnit)}
-                      className={`px-1.5 py-2 text-xs font-medium transition-colors ${
-                        widthUnit === primaryUnit
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {primaryUnit === 'feet' ? 'ft' : 'm'}
-                    </button>
-                    <button
-                      onClick={() => setWidthUnit(secondaryUnit)}
-                      className={`px-1.5 py-2 text-xs font-medium transition-colors border-l border-gray-300 ${
-                        widthUnit === secondaryUnit
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {secondaryUnit === 'inches' ? 'in' : 'mm'}
-                    </button>
-                  </div>
+            {/* Width */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Facility Width</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={editingWidth ?? getDisplayValue(settings.facilityWidth, widthUnit).toString()}
+                  onChange={handleWidthChange}
+                  onBlur={handleWidthBlur}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+                <div className="flex rounded-md border border-gray-300 overflow-hidden">
+                  <button
+                    onClick={() => setWidthUnit(primaryUnit)}
+                    className={`px-2 py-2 text-xs font-medium transition-colors ${
+                      widthUnit === primaryUnit
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {primaryUnit === 'feet' ? 'ft' : 'm'}
+                  </button>
+                  <button
+                    onClick={() => setWidthUnit(secondaryUnit)}
+                    className={`px-2 py-2 text-xs font-medium transition-colors border-l border-gray-300 ${
+                      widthUnit === secondaryUnit
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {secondaryUnit === 'inches' ? 'in' : 'mm'}
+                  </button>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Height</label>
-                <div className="flex gap-1">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={editingHeight ?? getDisplayValue(settings.facilityHeight, heightUnit).toString()}
-                    onChange={handleHeightChange}
-                    onBlur={handleHeightBlur}
-                    className="flex-1 min-w-0 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                  <div className="flex rounded-md border border-gray-300 overflow-hidden flex-shrink-0">
-                    <button
-                      onClick={() => setHeightUnit(primaryUnit)}
-                      className={`px-1.5 py-2 text-xs font-medium transition-colors ${
-                        heightUnit === primaryUnit
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {primaryUnit === 'feet' ? 'ft' : 'm'}
-                    </button>
-                    <button
-                      onClick={() => setHeightUnit(secondaryUnit)}
-                      className={`px-1.5 py-2 text-xs font-medium transition-colors border-l border-gray-300 ${
-                        heightUnit === secondaryUnit
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {secondaryUnit === 'inches' ? 'in' : 'mm'}
-                    </button>
-                  </div>
+            </div>
+
+            {/* Height */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Facility Height</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={editingHeight ?? getDisplayValue(settings.facilityHeight, heightUnit).toString()}
+                  onChange={handleHeightChange}
+                  onBlur={handleHeightBlur}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+                <div className="flex rounded-md border border-gray-300 overflow-hidden">
+                  <button
+                    onClick={() => setHeightUnit(primaryUnit)}
+                    className={`px-2 py-2 text-xs font-medium transition-colors ${
+                      heightUnit === primaryUnit
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {primaryUnit === 'feet' ? 'ft' : 'm'}
+                  </button>
+                  <button
+                    onClick={() => setHeightUnit(secondaryUnit)}
+                    className={`px-2 py-2 text-xs font-medium transition-colors border-l border-gray-300 ${
+                      heightUnit === secondaryUnit
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {secondaryUnit === 'inches' ? 'in' : 'mm'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -288,7 +277,7 @@ export function FloorSettings() {
               </select>
             </div>
 
-            {/* Summary stats */}
+            {/* Summary */}
             <div className="bg-gray-50 rounded-lg p-3 space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-gray-600">Grid</span>
@@ -300,7 +289,7 @@ export function FloorSettings() {
               </div>
             </div>
 
-            {/* Zone Sizing Section */}
+            {/* Zone Sizing */}
             <div className="border-t border-gray-200 pt-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Zone Sizing</h3>
               <p className="text-xs text-gray-500 mb-3">
@@ -340,35 +329,35 @@ export function FloorSettings() {
                   )}
                 </div>
 
-                {/* Stacking + Access side by side */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Stacking</label>
-                    <select
-                      value={settings.stackingHeight || 1}
-                      onChange={handleStackingHeightChange}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-xs"
-                    >
-                      {STACKING_HEIGHT_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Access space</label>
-                    <select
-                      value={settings.accessFactor || 1.3}
-                      onChange={handleAccessFactorChange}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-xs"
-                    >
-                      {ACCESS_FACTOR_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Stacking */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Stacking</label>
+                  <select
+                    value={settings.stackingHeight || 1}
+                    onChange={handleStackingHeightChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+                  >
+                    {STACKING_HEIGHT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Effective footprint summary */}
+                {/* Access */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Aisle / Access Space</label>
+                  <select
+                    value={settings.accessFactor || 1.3}
+                    onChange={handleAccessFactorChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+                  >
+                    {ACCESS_FACTOR_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Effective footprint */}
                 <div className="bg-blue-50 rounded-lg p-3">
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-blue-700">Effective floor claim per unit</span>
@@ -382,8 +371,34 @@ export function FloorSettings() {
               </div>
             </div>
           </div>
-        ) : (
-          <DoorControls />
+        )}
+      </div>
+
+      {/* ── Doors & Openings ── */}
+      <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <button
+          onClick={() => setDoorsOpen(!doorsOpen)}
+          className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-900">Doors & Openings</span>
+            {doors.length > 0 && (
+              <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-600">
+                {doors.length}
+              </span>
+            )}
+          </div>
+          {doorsOpen ? (
+            <ChevronUp className="w-4 h-4 text-gray-500" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-gray-500" />
+          )}
+        </button>
+
+        {doorsOpen && (
+          <div className="p-4">
+            <DoorControls />
+          </div>
         )}
       </div>
     </div>
