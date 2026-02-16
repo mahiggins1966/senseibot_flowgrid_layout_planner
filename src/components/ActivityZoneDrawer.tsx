@@ -170,12 +170,6 @@ export function ActivityZoneDrawer() {
     lastZoneCountRef.current = zones.length;
   }, [zones, activityRelationships, activities, sizingRecommendations]);
 
-  const formatUnit = (unit?: string) => {
-    if (!unit) return 'units';
-    if (unit === 'custom') return settings.primaryFlowUnitCustom || 'units';
-    return unit;
-  };
-
   // Floor unit label from 2A (pallets, boxes, totes)
   const getFloorUnitLabel = () => {
     const flowUnit = settings.typicalFlowUnit || 'pallet';

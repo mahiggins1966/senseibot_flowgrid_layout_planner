@@ -18,7 +18,7 @@ export function VolumeTimingInput() {
     loadVolumeTiming();
   }, [loadVolumeTiming]);
 
-  // Derive unit label from 2A flow unit setting
+  // Derive unit label from 2A flow unit setting (pallets, boxes, totes)
   const getFloorUnitLabel = () => {
     const flowUnit = settings.typicalFlowUnit || 'pallet';
     const option = UNIT_FOOTPRINT_OPTIONS.find(o => o.value === flowUnit);
@@ -28,6 +28,9 @@ export function VolumeTimingInput() {
   };
 
   const floorUnitLabel = getFloorUnitLabel();
+
+  // Throughput unit — default to Lbs
+  const throughputUnit = settings.measurementSystem === 'Metric' ? 'Kg' : 'Lbs';
 
   const totalTypicalVolume = stagingLanes.reduce((sum, lane) => {
     const vt = volumeTiming.find((v) => v.activity_id === lane.id);
@@ -48,25 +51,6 @@ export function VolumeTimingInput() {
     const vt = volumeTiming.find((v) => v.activity_id === lane.id);
     return sum + (vt?.peak_units_on_floor || 0);
   }, 0);
-
-  const getPrimaryUnitLabel = () => {
-    if (!settings.primaryFlowUnit) return 'Items';
-    if (settings.primaryFlowUnit === 'custom' && settings.primaryFlowUnitCustom) {
-      return settings.primaryFlowUnitCustom.charAt(0).toUpperCase() + settings.primaryFlowUnitCustom.slice(1);
-    }
-    const unitMap: Record<string, string> = {
-      lbs: 'Lbs',
-      kg: 'Kg',
-      pallets: 'Pallets',
-      units: 'Units',
-      orders: 'Orders',
-      cases: 'Cases',
-      containers: 'Containers',
-    };
-    return unitMap[settings.primaryFlowUnit] || 'Items';
-  };
-
-  const primaryUnit = getPrimaryUnitLabel();
 
   const getTypicalVolumeForActivity = (activityId: string) => {
     const vt = volumeTiming.find((v) => v.activity_id === activityId);
@@ -91,12 +75,6 @@ export function VolumeTimingInput() {
   const calculatePeakFactor = (typical: number, peak: number) => {
     if (typical === 0) return 0;
     return peak / typical;
-  };
-
-  const calculateFullLoads = (volume: number) => {
-    if (!settings.largestVehicleCapacity || settings.largestVehicleCapacity <= 0) return null;
-    const fullLoads = Math.ceil(volume / settings.largestVehicleCapacity);
-    return { fullLoads, lastLoadPercent: volume % settings.largestVehicleCapacity };
   };
 
   const getPercentageForActivity = (activityId: string) => {
@@ -141,7 +119,7 @@ export function VolumeTimingInput() {
                   Destination
                 </th>
                 <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-200" colSpan={2}>
-                  Throughput ({primaryUnit})
+                  Throughput ({throughputUnit})
                 </th>
                 <th className="px-3 py-2 text-center text-xs font-semibold text-blue-700 border-b border-blue-200 bg-blue-50" colSpan={2}>
                   {floorUnitLabel} on Floor
@@ -168,7 +146,6 @@ export function VolumeTimingInput() {
                 const peakUnits = getPeakUnitsForActivity(lane.id);
                 const percentage = getPercentageForActivity(lane.id);
                 const peakFactor = calculatePeakFactor(typicalVolume, peakVolume);
-                const fullLoadsCalc = calculateFullLoads(peakVolume);
 
                 let peakFactorColor = 'text-gray-700';
                 let peakFactorNote = '';
@@ -335,11 +312,6 @@ export function VolumeTimingInput() {
                             </span>
                             {peakFactorNote && (
                               <span className={peakFactorColor}>— {peakFactorNote}</span>
-                            )}
-                            {fullLoadsCalc && (
-                              <span className="text-gray-600 ml-4">
-                                ({fullLoadsCalc.fullLoads} full load{fullLoadsCalc.fullLoads !== 1 ? 's' : ''} at peak)
-                              </span>
                             )}
                           </div>
                         </td>

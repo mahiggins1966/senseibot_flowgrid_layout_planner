@@ -19,19 +19,8 @@ export function VolumeSummaryPanel() {
   const floorUnitLabel = getFloorUnitLabel();
   const floorUnitSingular = floorUnitLabel.replace(/s$/, '');
 
-  const getPrimaryUnitLabel = () => {
-    if (!settings.primaryFlowUnit) return 'Items';
-    if (settings.primaryFlowUnit === 'custom' && settings.primaryFlowUnitCustom) {
-      return settings.primaryFlowUnitCustom.charAt(0).toUpperCase() + settings.primaryFlowUnitCustom.slice(1);
-    }
-    const unitMap: Record<string, string> = {
-      lbs: 'Lbs', kg: 'Kg', pallets: 'Pallets', units: 'Units',
-      orders: 'Orders', cases: 'Cases', containers: 'Containers',
-    };
-    return unitMap[settings.primaryFlowUnit] || 'Items';
-  };
-
-  const primaryUnit = getPrimaryUnitLabel();
+  // Throughput unit — derived from measurement system
+  const throughputUnit = settings.measurementSystem === 'Metric' ? 'Kg' : 'Lbs';
 
   const totals = useMemo(() => {
     let typicalVolume = 0, peakVolume = 0, typicalUnits = 0, peakUnits = 0;
@@ -115,7 +104,7 @@ export function VolumeSummaryPanel() {
             <div>
               <div className="text-xs text-gray-500">Typical shift</div>
               <div className="text-sm font-semibold text-gray-900">
-                {totals.typicalVolume.toLocaleString()} {primaryUnit.toLowerCase()}
+                {totals.typicalVolume.toLocaleString()} {throughputUnit.toLowerCase()}
               </div>
               {totals.typicalUnits > 0 && (
                 <div className="text-xs text-blue-600 font-medium">
@@ -126,7 +115,7 @@ export function VolumeSummaryPanel() {
             <div>
               <div className="text-xs text-gray-500">Peak shift</div>
               <div className="text-sm font-semibold text-gray-900">
-                {totals.peakVolume.toLocaleString()} {primaryUnit.toLowerCase()}
+                {totals.peakVolume.toLocaleString()} {throughputUnit.toLowerCase()}
               </div>
               {totals.peakUnits > 0 && (
                 <div className="text-xs text-blue-600 font-medium">

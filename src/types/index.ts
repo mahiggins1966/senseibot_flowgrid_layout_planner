@@ -10,10 +10,6 @@ export interface GridSettings {
   facilityHeight: number;
   squareSize: number;
   measurementSystem: MeasurementSystem;
-  primaryFlowUnit?: string;
-  primaryFlowUnitCustom?: string;
-  largestVehicleName?: string;
-  largestVehicleCapacity?: number;
   typicalFlowUnit?: string;
   unitFootprintSqFt?: number;
   stackingHeight?: number;

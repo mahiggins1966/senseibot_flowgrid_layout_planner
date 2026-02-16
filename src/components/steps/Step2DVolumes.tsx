@@ -1,4 +1,3 @@
-import { FlowUnitSelector } from '../FlowUnitSelector';
 import { VolumeTimingInput } from '../VolumeTimingInput';
 import { VolumeSummaryPanel } from '../VolumeSummaryPanel';
 
@@ -22,8 +21,6 @@ export function Step2DVolumes({ onNext }: Step2DVolumesProps) {
                 most space and which need to be closest to the doors.
               </p>
             </div>
-
-            <FlowUnitSelector />
 
             <VolumeTimingInput />
 
