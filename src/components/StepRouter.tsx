@@ -19,7 +19,9 @@ import { ScoringPanel } from './ScoringPanel';
 import CorridorDrawingPanel from './CorridorDrawingPanel';
 import { useGridStore } from '../store/gridStore';
 import { calculateLayoutScore, LayoutScore } from '../utils/scoring';
-import { X, CheckCircle, AlertTriangle, XCircle, ChevronRight } from 'lucide-react';
+import { exportFloorPlanPDF } from '../utils/pdfExport';
+import { exportSetupInstructions } from '../utils/setupInstructionsExport';
+import { X, CheckCircle, AlertTriangle, XCircle, ChevronRight, FileText, ClipboardList } from 'lucide-react';
 
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
 
@@ -236,8 +238,8 @@ export function StepRouter({
                       </details>
 
                       <details>
-                        <summary style={{ fontWeight: 'bold', cursor: 'pointer', padding: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', marginBottom: '8px' }}>
-                          Equipment Library
+                        <summary style={{ fontWeight: 'bold', cursor: 'pointer', padding: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Equipment Library</span>
                         </summary>
                         <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
                           <ObjectLibrary />
@@ -256,10 +258,49 @@ export function StepRouter({
                         </div>
                       </details>
                     </div>
-                    <div className="pt-4 border-t border-gray-200">
+
+                    {/* Export buttons */}
+                    <div className="pt-3 border-t border-gray-200">
+                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Export</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => exportFloorPlanPDF(scoreData ? {
+                            scoreData,
+                            facilityWidth: settings.facilityWidth,
+                            facilityHeight: settings.facilityHeight,
+                            squareSize: settings.squareSize,
+                            zoneCount: zones.filter(z => z.activity_id).length,
+                            corridorCount: corridors.length,
+                            doorCount: doors.length,
+                            activityCount: activities.length,
+                          } : undefined)}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          Floor Plan PDF
+                        </button>
+                        <button
+                          onClick={() => exportSetupInstructions({
+                            zones,
+                            activities,
+                            corridors,
+                            doors,
+                            facilityWidth: settings.facilityWidth,
+                            facilityHeight: settings.facilityHeight,
+                            squareSize: settings.squareSize,
+                          })}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors"
+                        >
+                          <ClipboardList className="w-3.5 h-3.5" />
+                          Setup Instructions
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-200">
                       <button
                         onClick={handleStep2Complete}
-                        className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibent rounded-lg transition-colors"
+                        className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors"
                       >
                         Complete Step 2 →
                       </button>
