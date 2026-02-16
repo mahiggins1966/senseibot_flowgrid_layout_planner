@@ -23,19 +23,8 @@ export function FlowUnitSelector() {
     });
   };
 
-  const handleSecondaryUnitChange = (value: string) => {
-    updateSettings({
-      secondaryFlowUnit: value || undefined,
-      secondaryFlowUnitCustom: value === 'custom' ? settings.secondaryFlowUnitCustom : undefined,
-    });
-  };
-
   const handlePrimaryCustomChange = (value: string) => {
     updateSettings({ primaryFlowUnitCustom: value });
-  };
-
-  const handleSecondaryCustomChange = (value: string) => {
-    updateSettings({ secondaryFlowUnitCustom: value });
   };
 
   const handleVehicleNameChange = (value: string) => {
@@ -114,36 +103,7 @@ export function FlowUnitSelector() {
           </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-900 mb-2">
-            Secondary Unit <span className="text-gray-500">(optional)</span>
-          </label>
-          <select
-            value={settings.secondaryFlowUnit || ''}
-            onChange={(e) => handleSecondaryUnitChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">None</option>
-            {UNIT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          {settings.secondaryFlowUnit === 'custom' && (
-            <input
-              type="text"
-              value={settings.secondaryFlowUnitCustom || ''}
-              onChange={(e) => handleSecondaryCustomChange(e.target.value)}
-              placeholder="Enter your unit name"
-              className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          )}
-          <p className="mt-2 text-xs text-gray-600">
-            Optional — if you track a second unit for workload or counting purposes, add it here. Example:
-            primary = pounds, secondary = pouches.
-          </p>
-        </div>
+
       </div>
 
       <div className="border-t border-gray-200 pt-6">

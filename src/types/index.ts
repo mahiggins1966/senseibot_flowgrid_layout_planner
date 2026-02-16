@@ -12,8 +12,6 @@ export interface GridSettings {
   measurementSystem: MeasurementSystem;
   primaryFlowUnit?: string;
   primaryFlowUnitCustom?: string;
-  secondaryFlowUnit?: string;
-  secondaryFlowUnitCustom?: string;
   largestVehicleName?: string;
   largestVehicleCapacity?: number;
   typicalFlowUnit?: string;
@@ -156,8 +154,6 @@ export interface VolumeTiming {
   activity_id: string;
   typical_volume_per_shift: number;
   peak_volume_per_shift: number;
-  typical_secondary_volume_per_shift?: number;
-  peak_secondary_volume_per_shift?: number;
   typical_units_on_floor: number;
   peak_units_on_floor: number;
   percentage: number;

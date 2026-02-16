@@ -7,13 +7,10 @@ export function VolumeTimingInput() {
   const { activities, volumeTiming, updateVolumeTiming, settings, loadVolumeTiming } = useGridStore();
 
   const stagingLanes = activities.filter((a) => a.type === 'staging-lane');
-  const workActivities = activities.filter((a) => a.type !== 'staging-lane');
 
   const [editingValues, setEditingValues] = useState<Record<string, {
     typicalPrimary: string;
     peakPrimary: string;
-    typicalSecondary: string;
-    peakSecondary: string;
     typicalUnits: string;
     peakUnits: string;
   }>>({});
@@ -27,10 +24,7 @@ export function VolumeTimingInput() {
     const flowUnit = settings.typicalFlowUnit || 'pallet';
     const option = UNIT_FOOTPRINT_OPTIONS.find(o => o.value === flowUnit);
     if (flowUnit === 'custom') return 'Units';
-    if (option) {
-      // Capitalize first letter
-      return option.value.charAt(0).toUpperCase() + option.value.slice(1) + 's';
-    }
+    if (option) return option.value.charAt(0).toUpperCase() + option.value.slice(1) + 's';
     return 'Units';
   };
 
@@ -45,16 +39,6 @@ export function VolumeTimingInput() {
   const totalPeakVolume = stagingLanes.reduce((sum, lane) => {
     const vt = volumeTiming.find((v) => v.activity_id === lane.id);
     return sum + (vt ? vt.peak_volume_per_shift : 0);
-  }, 0);
-
-  const totalTypicalSecondaryVolume = stagingLanes.reduce((sum, lane) => {
-    const vt = volumeTiming.find((v) => v.activity_id === lane.id);
-    return sum + (vt?.typical_secondary_volume_per_shift || 0);
-  }, 0);
-
-  const totalPeakSecondaryVolume = stagingLanes.reduce((sum, lane) => {
-    const vt = volumeTiming.find((v) => v.activity_id === lane.id);
-    return sum + (vt?.peak_secondary_volume_per_shift || 0);
   }, 0);
 
   const totalTypicalUnits = stagingLanes.reduce((sum, lane) => {
@@ -86,26 +70,6 @@ export function VolumeTimingInput() {
 
   const primaryUnit = getPrimaryUnitLabel();
 
-  const getSecondaryUnitLabel = () => {
-    if (!settings.secondaryFlowUnit) return '';
-    if (settings.secondaryFlowUnit === 'custom' && settings.secondaryFlowUnitCustom) {
-      return settings.secondaryFlowUnitCustom.charAt(0).toUpperCase() + settings.secondaryFlowUnitCustom.slice(1);
-    }
-    const unitMap: Record<string, string> = {
-      lbs: 'Lbs',
-      kg: 'Kg',
-      pallets: 'Pallets',
-      units: 'Units',
-      orders: 'Orders',
-      cases: 'Cases',
-      containers: 'Containers',
-    };
-    return unitMap[settings.secondaryFlowUnit] || '';
-  };
-
-  const secondaryUnit = getSecondaryUnitLabel();
-  const hasSecondaryUnit = !!settings.secondaryFlowUnit;
-
   const getTypicalVolumeForActivity = (activityId: string) => {
     const vt = volumeTiming.find((v) => v.activity_id === activityId);
     return vt ? vt.typical_volume_per_shift : 0;
@@ -114,16 +78,6 @@ export function VolumeTimingInput() {
   const getPeakVolumeForActivity = (activityId: string) => {
     const vt = volumeTiming.find((v) => v.activity_id === activityId);
     return vt ? vt.peak_volume_per_shift : 0;
-  };
-
-  const getTypicalSecondaryVolumeForActivity = (activityId: string) => {
-    const vt = volumeTiming.find((v) => v.activity_id === activityId);
-    return vt?.typical_secondary_volume_per_shift || 0;
-  };
-
-  const getPeakSecondaryVolumeForActivity = (activityId: string) => {
-    const vt = volumeTiming.find((v) => v.activity_id === activityId);
-    return vt?.peak_secondary_volume_per_shift || 0;
   };
 
   const getTypicalUnitsForActivity = (activityId: string) => {
@@ -144,8 +98,7 @@ export function VolumeTimingInput() {
   const calculateFullLoads = (volume: number) => {
     if (!settings.largestVehicleCapacity || settings.largestVehicleCapacity <= 0) return null;
     const fullLoads = Math.ceil(volume / settings.largestVehicleCapacity);
-    const percentCapacity = ((volume % settings.largestVehicleCapacity) / settings.largestVehicleCapacity * 100).toFixed(0);
-    return { fullLoads, percentCapacity, lastLoadPercent: volume % settings.largestVehicleCapacity };
+    return { fullLoads, lastLoadPercent: volume % settings.largestVehicleCapacity };
   };
 
   const getPercentageForActivity = (activityId: string) => {
@@ -156,10 +109,8 @@ export function VolumeTimingInput() {
 
   const getHighestVolumeDestination = () => {
     if (stagingLanes.length === 0) return null;
-
     let highest = stagingLanes[0];
     let highestVolume = getTypicalVolumeForActivity(highest.id);
-
     stagingLanes.forEach((lane) => {
       const volume = getTypicalVolumeForActivity(lane.id);
       if (volume > highestVolume) {
@@ -167,19 +118,16 @@ export function VolumeTimingInput() {
         highestVolume = volume;
       }
     });
-
     return highestVolume > 0 ? highest : null;
   };
 
   const getEarliestDeparture = () => {
     const lanesWithTime = stagingLanes.filter((lane) => lane.departure_time);
     if (lanesWithTime.length === 0) return null;
-
     lanesWithTime.sort((a, b) => {
       if (!a.departure_time || !b.departure_time) return 0;
       return a.departure_time.localeCompare(b.departure_time);
     });
-
     return lanesWithTime[0];
   };
 
@@ -190,8 +138,6 @@ export function VolumeTimingInput() {
   const saveVolumeTiming = async (laneId: string, overrides: Partial<{
     typicalVolume: number;
     peakVolume: number;
-    typicalSecondaryVolume: number;
-    peakSecondaryVolume: number;
     typicalUnitsOnFloor: number;
     peakUnitsOnFloor: number;
   }>) => {
@@ -200,8 +146,6 @@ export function VolumeTimingInput() {
       laneId,
       overrides.typicalVolume ?? (vt?.typical_volume_per_shift || 0),
       overrides.peakVolume ?? (vt?.peak_volume_per_shift || 0),
-      hasSecondaryUnit ? (overrides.typicalSecondaryVolume ?? (vt?.typical_secondary_volume_per_shift || 0)) : undefined,
-      hasSecondaryUnit ? (overrides.peakSecondaryVolume ?? (vt?.peak_secondary_volume_per_shift || 0)) : undefined,
       overrides.typicalUnitsOnFloor ?? (vt?.typical_units_on_floor || 0),
       overrides.peakUnitsOnFloor ?? (vt?.peak_units_on_floor || 0),
     );
@@ -228,11 +172,6 @@ export function VolumeTimingInput() {
                 <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-200" colSpan={2}>
                   Throughput ({primaryUnit})
                 </th>
-                {hasSecondaryUnit && (
-                  <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 border-b border-gray-200" colSpan={2}>
-                    {secondaryUnit}
-                  </th>
-                )}
                 <th className="px-3 py-2 text-center text-xs font-semibold text-blue-700 border-b border-blue-200 bg-blue-50" colSpan={2}>
                   {floorUnitLabel} on Floor
                 </th>
@@ -246,12 +185,6 @@ export function VolumeTimingInput() {
               <tr className="bg-gray-50">
                 <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 border-b border-gray-300">Typical</th>
                 <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 border-b border-gray-300">Peak</th>
-                {hasSecondaryUnit && (
-                  <>
-                    <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 border-b border-gray-300">Typical</th>
-                    <th className="px-3 py-1 text-left text-xs font-medium text-gray-500 border-b border-gray-300">Peak</th>
-                  </>
-                )}
                 <th className="px-3 py-1 text-left text-xs font-medium text-blue-600 border-b border-blue-200 bg-blue-50">Typical</th>
                 <th className="px-3 py-1 text-left text-xs font-medium text-blue-600 border-b border-blue-200 bg-blue-50">Peak</th>
               </tr>
@@ -260,8 +193,6 @@ export function VolumeTimingInput() {
               {stagingLanes.map((lane, index) => {
                 const typicalVolume = getTypicalVolumeForActivity(lane.id);
                 const peakVolume = getPeakVolumeForActivity(lane.id);
-                const typicalSecondaryVolume = getTypicalSecondaryVolumeForActivity(lane.id);
-                const peakSecondaryVolume = getPeakSecondaryVolumeForActivity(lane.id);
                 const typicalUnits = getTypicalUnitsForActivity(lane.id);
                 const peakUnits = getPeakUnitsForActivity(lane.id);
                 const percentage = getPercentageForActivity(lane.id);
@@ -313,15 +244,13 @@ export function VolumeTimingInput() {
                                 ...prev[lane.id],
                                 typicalPrimary: sanitized,
                                 peakPrimary: prev[lane.id]?.peakPrimary ?? peakVolume.toString(),
-                                typicalSecondary: prev[lane.id]?.typicalSecondary ?? typicalSecondaryVolume.toString(),
-                                peakSecondary: prev[lane.id]?.peakSecondary ?? peakSecondaryVolume.toString(),
                                 typicalUnits: prev[lane.id]?.typicalUnits ?? typicalUnits.toString(),
                                 peakUnits: prev[lane.id]?.peakUnits ?? peakUnits.toString(),
                               },
                             }));
                           }}
-                          onBlur={async (e) => {
-                            const val = parseFloat(e.target.value) || 0;
+                          onBlur={async () => {
+                            const val = parseFloat(editingValues[lane.id]?.typicalPrimary ?? '') || 0;
                             await saveVolumeTiming(lane.id, { typicalVolume: val });
                             setEditingValues(prev => { const n = { ...prev }; delete n[lane.id]; return n; });
                           }}
@@ -345,15 +274,13 @@ export function VolumeTimingInput() {
                                 ...prev[lane.id],
                                 typicalPrimary: prev[lane.id]?.typicalPrimary ?? typicalVolume.toString(),
                                 peakPrimary: sanitized,
-                                typicalSecondary: prev[lane.id]?.typicalSecondary ?? typicalSecondaryVolume.toString(),
-                                peakSecondary: prev[lane.id]?.peakSecondary ?? peakSecondaryVolume.toString(),
                                 typicalUnits: prev[lane.id]?.typicalUnits ?? typicalUnits.toString(),
                                 peakUnits: prev[lane.id]?.peakUnits ?? peakUnits.toString(),
                               },
                             }));
                           }}
-                          onBlur={async (e) => {
-                            const val = parseFloat(e.target.value) || 0;
+                          onBlur={async () => {
+                            const val = parseFloat(editingValues[lane.id]?.peakPrimary ?? '') || 0;
                             await saveVolumeTiming(lane.id, { peakVolume: val });
                             setEditingValues(prev => { const n = { ...prev }; delete n[lane.id]; return n; });
                           }}
@@ -361,73 +288,6 @@ export function VolumeTimingInput() {
                           placeholder="0"
                         />
                       </td>
-                      {/* Secondary unit columns */}
-                      {hasSecondaryUnit && (
-                        <>
-                          <td className="px-3 py-3 border-b border-gray-200">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={editingValues[lane.id]?.typicalSecondary ?? typicalSecondaryVolume.toString()}
-                              onChange={(e) => {
-                                const value = e.target.value.replace(/[^0-9.]/g, '');
-                                const parts = value.split('.');
-                                const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                                setEditingValues(prev => ({
-                                  ...prev,
-                                  [lane.id]: {
-                                    ...prev[lane.id],
-                                    typicalPrimary: prev[lane.id]?.typicalPrimary ?? typicalVolume.toString(),
-                                    peakPrimary: prev[lane.id]?.peakPrimary ?? peakVolume.toString(),
-                                    typicalSecondary: sanitized,
-                                    peakSecondary: prev[lane.id]?.peakSecondary ?? peakSecondaryVolume.toString(),
-                                    typicalUnits: prev[lane.id]?.typicalUnits ?? typicalUnits.toString(),
-                                    peakUnits: prev[lane.id]?.peakUnits ?? peakUnits.toString(),
-                                  },
-                                }));
-                              }}
-                              onBlur={async (e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                await saveVolumeTiming(lane.id, { typicalSecondaryVolume: val });
-                                setEditingValues(prev => { const n = { ...prev }; delete n[lane.id]; return n; });
-                              }}
-                              className="w-20 px-2 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="0"
-                            />
-                          </td>
-                          <td className="px-3 py-3 border-b border-gray-200">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={editingValues[lane.id]?.peakSecondary ?? peakSecondaryVolume.toString()}
-                              onChange={(e) => {
-                                const value = e.target.value.replace(/[^0-9.]/g, '');
-                                const parts = value.split('.');
-                                const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
-                                setEditingValues(prev => ({
-                                  ...prev,
-                                  [lane.id]: {
-                                    ...prev[lane.id],
-                                    typicalPrimary: prev[lane.id]?.typicalPrimary ?? typicalVolume.toString(),
-                                    peakPrimary: prev[lane.id]?.peakPrimary ?? peakVolume.toString(),
-                                    typicalSecondary: prev[lane.id]?.typicalSecondary ?? typicalSecondaryVolume.toString(),
-                                    peakSecondary: sanitized,
-                                    typicalUnits: prev[lane.id]?.typicalUnits ?? typicalUnits.toString(),
-                                    peakUnits: prev[lane.id]?.peakUnits ?? peakUnits.toString(),
-                                  },
-                                }));
-                              }}
-                              onBlur={async (e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                await saveVolumeTiming(lane.id, { peakSecondaryVolume: val });
-                                setEditingValues(prev => { const n = { ...prev }; delete n[lane.id]; return n; });
-                              }}
-                              className="w-20 px-2 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="0"
-                            />
-                          </td>
-                        </>
-                      )}
                       {/* Typical Units on Floor */}
                       <td className="px-3 py-3 border-b border-blue-100 bg-blue-50/30">
                         <input
@@ -444,15 +304,13 @@ export function VolumeTimingInput() {
                                 ...prev[lane.id],
                                 typicalPrimary: prev[lane.id]?.typicalPrimary ?? typicalVolume.toString(),
                                 peakPrimary: prev[lane.id]?.peakPrimary ?? peakVolume.toString(),
-                                typicalSecondary: prev[lane.id]?.typicalSecondary ?? typicalSecondaryVolume.toString(),
-                                peakSecondary: prev[lane.id]?.peakSecondary ?? peakSecondaryVolume.toString(),
                                 typicalUnits: sanitized,
                                 peakUnits: prev[lane.id]?.peakUnits ?? peakUnits.toString(),
                               },
                             }));
                           }}
-                          onBlur={async (e) => {
-                            const val = parseFloat(e.target.value) || 0;
+                          onBlur={async () => {
+                            const val = parseFloat(editingValues[lane.id]?.typicalUnits ?? '') || 0;
                             await saveVolumeTiming(lane.id, { typicalUnitsOnFloor: val });
                             setEditingValues(prev => { const n = { ...prev }; delete n[lane.id]; return n; });
                           }}
@@ -476,15 +334,13 @@ export function VolumeTimingInput() {
                                 ...prev[lane.id],
                                 typicalPrimary: prev[lane.id]?.typicalPrimary ?? typicalVolume.toString(),
                                 peakPrimary: prev[lane.id]?.peakPrimary ?? peakVolume.toString(),
-                                typicalSecondary: prev[lane.id]?.typicalSecondary ?? typicalSecondaryVolume.toString(),
-                                peakSecondary: prev[lane.id]?.peakSecondary ?? peakSecondaryVolume.toString(),
                                 typicalUnits: prev[lane.id]?.typicalUnits ?? typicalUnits.toString(),
                                 peakUnits: sanitized,
                               },
                             }));
                           }}
-                          onBlur={async (e) => {
-                            const val = parseFloat(e.target.value) || 0;
+                          onBlur={async () => {
+                            const val = parseFloat(editingValues[lane.id]?.peakUnits ?? '') || 0;
                             await saveVolumeTiming(lane.id, { peakUnitsOnFloor: val });
                             setEditingValues(prev => { const n = { ...prev }; delete n[lane.id]; return n; });
                           }}
@@ -501,7 +357,7 @@ export function VolumeTimingInput() {
                     </tr>
                     {peakFactor > 0 && (
                       <tr key={`${lane.id}-factor`} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td colSpan={hasSecondaryUnit ? 9 : 7} className="px-3 py-2 border-b border-gray-200">
+                        <td colSpan={7} className="px-3 py-2 border-b border-gray-200">
                           <div className="flex items-center gap-2 text-xs">
                             <span className={`font-semibold ${peakFactorColor}`}>
                               Peak Factor: {peakFactor.toFixed(1)}x
@@ -529,16 +385,6 @@ export function VolumeTimingInput() {
                 <td className="px-3 py-3 text-sm font-bold text-gray-900">
                   {totalPeakVolume.toLocaleString()}
                 </td>
-                {hasSecondaryUnit && (
-                  <>
-                    <td className="px-3 py-3 text-sm font-bold text-gray-900">
-                      {totalTypicalSecondaryVolume.toLocaleString()}
-                    </td>
-                    <td className="px-3 py-3 text-sm font-bold text-gray-900">
-                      {totalPeakSecondaryVolume.toLocaleString()}
-                    </td>
-                  </>
-                )}
                 <td className="px-3 py-3 text-sm font-bold text-blue-900 bg-blue-50/30">
                   {totalTypicalUnits.toLocaleString()}
                 </td>
@@ -589,7 +435,6 @@ export function VolumeTimingInput() {
             <span className="font-semibold text-gray-700">Typical shift:</span>
             <span className="text-gray-900">
               {totalTypicalVolume.toLocaleString()} {primaryUnit.toLowerCase()}
-              {hasSecondaryUnit && ` (${totalTypicalSecondaryVolume.toLocaleString()} ${secondaryUnit.toLowerCase()})`}
               {totalTypicalUnits > 0 && ` · ${totalTypicalUnits.toLocaleString()} ${floorUnitLabel.toLowerCase()}`}
             </span>
           </div>
@@ -597,7 +442,6 @@ export function VolumeTimingInput() {
             <span className="font-semibold text-gray-700">Peak shift:</span>
             <span className="text-gray-900">
               {totalPeakVolume.toLocaleString()} {primaryUnit.toLowerCase()}
-              {hasSecondaryUnit && ` (${totalPeakSecondaryVolume.toLocaleString()} ${secondaryUnit.toLowerCase()})`}
               {totalPeakUnits > 0 && ` · ${totalPeakUnits.toLocaleString()} ${floorUnitLabel.toLowerCase()}`}
             </span>
           </div>

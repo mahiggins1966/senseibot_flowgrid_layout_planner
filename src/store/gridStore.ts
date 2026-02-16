@@ -126,7 +126,7 @@ interface GridStore {
   deleteActivity: (id: string) => void;
   loadActivities: () => Promise<void>;
   setVolumeTiming: (volumeTiming: VolumeTiming[]) => void;
-  updateVolumeTiming: (activityId: string, typicalVolume: number, peakVolume: number, typicalSecondaryVolume?: number, peakSecondaryVolume?: number, typicalUnitsOnFloor?: number, peakUnitsOnFloor?: number) => void;
+  updateVolumeTiming: (activityId: string, typicalVolume: number, peakVolume: number, typicalUnitsOnFloor?: number, peakUnitsOnFloor?: number) => void;
   loadVolumeTiming: () => Promise<void>;
   setActivityRelationships: (relationships: ActivityRelationship[]) => void;
   updateRelationship: (activityAId: string, activityBId: string, rating: string, reason?: string) => void;
@@ -489,8 +489,6 @@ export const useGridStore = create<GridStore>((set, get) => ({
           measurementSystem: data.measurement_system,
           primaryFlowUnit: data.primary_flow_unit,
           primaryFlowUnitCustom: data.primary_flow_unit_custom,
-          secondaryFlowUnit: data.secondary_flow_unit,
-          secondaryFlowUnitCustom: data.secondary_flow_unit_custom,
           largestVehicleName: data.largest_vehicle_name,
           largestVehicleCapacity: data.largest_vehicle_capacity,
           typicalFlowUnit: data.typical_flow_unit,
@@ -523,8 +521,6 @@ export const useGridStore = create<GridStore>((set, get) => ({
       measurement_system: state.settings.measurementSystem,
       primary_flow_unit: state.settings.primaryFlowUnit,
       primary_flow_unit_custom: state.settings.primaryFlowUnitCustom,
-      secondary_flow_unit: state.settings.secondaryFlowUnit,
-      secondary_flow_unit_custom: state.settings.secondaryFlowUnitCustom,
       largest_vehicle_name: state.settings.largestVehicleName,
       largest_vehicle_capacity: state.settings.largestVehicleCapacity,
       typical_flow_unit: state.settings.typicalFlowUnit,
@@ -616,7 +612,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
 
   setVolumeTiming: (volumeTiming) => set({ volumeTiming }),
 
-  updateVolumeTiming: async (activityId, typicalVolume, peakVolume, typicalSecondaryVolume, peakSecondaryVolume, typicalUnitsOnFloor, peakUnitsOnFloor) => {
+  updateVolumeTiming: async (activityId, typicalVolume, peakVolume, typicalUnitsOnFloor, peakUnitsOnFloor) => {
     const { data: existing } = await supabase
       .from('volume_timing')
       .select('*')
@@ -628,14 +624,6 @@ export const useGridStore = create<GridStore>((set, get) => ({
       peak_volume_per_shift: peakVolume,
       percentage: 0,
     };
-
-    if (typicalSecondaryVolume !== undefined) {
-      updateData.typical_secondary_volume_per_shift = typicalSecondaryVolume;
-    }
-
-    if (peakSecondaryVolume !== undefined) {
-      updateData.peak_secondary_volume_per_shift = peakSecondaryVolume;
-    }
 
     if (typicalUnitsOnFloor !== undefined) {
       updateData.typical_units_on_floor = typicalUnitsOnFloor;
