@@ -87,13 +87,10 @@ export function ActivityList() {
     deleteActivity(id);
   };
 
-  // Sort activities by sequence_order for display (unsequenced at end)
-  const sortedActivities = [...activities].sort((a, b) => {
-    const aSeq = a.sequence_order ?? Infinity;
-    const bSeq = b.sequence_order ?? Infinity;
-    if (aSeq !== bSeq) return aSeq - bSeq;
-    return a.sort_order - b.sort_order;
-  });
+  // Keep activities in the order they were added — sequence number is informational here,
+  // it does its real work in Step 2E Closeness. No auto-sorting so typing a number
+  // doesn't yank the card out from under the user's cursor.
+  const sortedActivities = [...activities].sort((a, b) => a.sort_order - b.sort_order);
 
   // Count sequenced activities for the summary
   const sequencedCount = activities.filter(a => a.sequence_order != null).length;
@@ -118,7 +115,7 @@ export function ActivityList() {
         {sortedActivities.map((activity) => (
           <div key={activity.id} className="bg-white border border-gray-300 rounded-lg p-4">
             <div className="grid grid-cols-12 gap-3 items-start">
-              <div className="col-span-4">
+              <div className="col-span-3">
                 <label className="text-xs font-medium text-gray-700 block mb-1">
                   Activity Name
                 </label>
@@ -190,7 +187,7 @@ export function ActivityList() {
                     />
                   </div>
 
-                  <div className="col-span-1">
+                  <div className="col-span-2">
                     <label className="text-xs font-medium text-gray-700 block mb-1">
                       Departs
                     </label>
@@ -200,14 +197,14 @@ export function ActivityList() {
                       onChange={(e) =>
                         handleUpdateActivity(activity.id, 'departure_time', e.target.value)
                       }
-                      className="w-full px-1 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-2 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </>
               )}
 
               {activity.type !== 'staging-lane' && (
-                <div className="col-span-3"></div>
+                <div className="col-span-4"></div>
               )}
 
               <div className="col-span-1 flex items-end justify-end h-full pb-1">
