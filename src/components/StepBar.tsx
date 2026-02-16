@@ -1,4 +1,4 @@
-import { Home } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
 
@@ -28,10 +28,10 @@ export function StepBar({ currentSubStep, onSubStepChange, onBackToHome }: StepB
           <button
             onClick={onBackToHome}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors mr-2 whitespace-nowrap"
-            title="Back to projects"
+            title="Back to project dashboard"
           >
-            <Home className="w-4 h-4" />
-            Projects
+            <ArrowLeft className="w-4 h-4" />
+            Project
           </button>
 
           <div className="w-px h-6 bg-gray-200 mr-2" />

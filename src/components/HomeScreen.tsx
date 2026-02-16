@@ -25,7 +25,7 @@ interface ProjectWithMeta extends Project {
 }
 
 interface HomeScreenProps {
-  onOpenProject: (projectId: string, layoutId: string) => void;
+  onOpenProject: (projectId: string) => void;
 }
 
 export function HomeScreen({ onOpenProject }: HomeScreenProps) {
@@ -119,8 +119,8 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
     setCreatingProject(false);
     setNewProjectName('');
 
-    // Open the new project immediately
-    onOpenProject(project.id, layout.id);
+    // Open the new project dashboard immediately
+    onOpenProject(project.id);
   };
 
   const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
@@ -132,9 +132,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
   };
 
   const handleOpenProject = (project: ProjectWithMeta) => {
-    if (project.layouts.length === 0) return;
-    // Open the first layout
-    onOpenProject(project.id, project.layouts[0].id);
+    onOpenProject(project.id);
   };
 
   const formatDate = (dateStr: string) => {

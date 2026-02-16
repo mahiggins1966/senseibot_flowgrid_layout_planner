@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { HomeScreen } from './components/HomeScreen';
+import { ProjectDashboard } from './components/ProjectDashboard';
 import { StepBar } from './components/StepBar';
 import { StepRouter } from './components/StepRouter';
 import { ObjectPopup } from './components/ObjectPopup';
@@ -7,7 +8,7 @@ import { ZoneEditor } from './components/ZoneEditor';
 import { useGridStore } from './store/gridStore';
 
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
-type AppView = 'home' | 'editor';
+type AppView = 'home' | 'dashboard' | 'editor';
 
 function App() {
   const {
@@ -21,21 +22,25 @@ function App() {
   } = useGridStore();
 
   const [view, setView] = useState<AppView>('home');
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [currentSubStep, setCurrentSubStep] = useState<SubStep>('2a');
 
   useEffect(() => {
     setStoreSubStep(currentSubStep);
   }, [currentSubStep, setStoreSubStep]);
 
-  const handleOpenProject = (projectId: string, layoutId: string) => {
-    // Set the active project + layout in the store
+  // Home → Dashboard
+  const handleOpenProjectDashboard = (projectId: string) => {
+    setActiveProjectId(projectId);
+    setView('dashboard');
+  };
+
+  // Dashboard → Editor (or Home → Editor shortcut)
+  const handleOpenLayout = (projectId: string, layoutId: string) => {
+    setActiveProjectId(projectId);
     setActiveProject(projectId);
     setActiveLayout(layoutId);
-
-    // Reset to first step
     setCurrentSubStep('2a');
-
-    // Switch to editor view — data loads happen after view switch
     setView('editor');
   };
 
@@ -51,6 +56,11 @@ function App() {
 
   const handleBackToHome = () => {
     setView('home');
+    setActiveProjectId(null);
+  };
+
+  const handleBackToDashboard = () => {
+    setView('dashboard');
   };
 
   const handleSubStepChange = (subStep: SubStep) => {
@@ -59,7 +69,18 @@ function App() {
 
   // Home screen
   if (view === 'home') {
-    return <HomeScreen onOpenProject={handleOpenProject} />;
+    return <HomeScreen onOpenProject={handleOpenProjectDashboard} />;
+  }
+
+  // Project dashboard
+  if (view === 'dashboard' && activeProjectId) {
+    return (
+      <ProjectDashboard
+        projectId={activeProjectId}
+        onOpenLayout={handleOpenLayout}
+        onBackToHome={handleBackToHome}
+      />
+    );
   }
 
   // Editor view
@@ -70,7 +91,7 @@ function App() {
       <StepBar
         currentSubStep={currentSubStep}
         onSubStepChange={handleSubStepChange}
-        onBackToHome={handleBackToHome}
+        onBackToHome={handleBackToDashboard}
       />
 
       <div className="flex-1 overflow-hidden">
