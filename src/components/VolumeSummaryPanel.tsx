@@ -99,10 +99,10 @@ export function VolumeSummaryPanel() {
 
         {/* Summary Stats */}
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">Shift Summary</h3>
+          <h3 className="text-sm font-bold text-gray-900 mb-3">Daily Summary</h3>
           <div className="space-y-2.5">
             <div>
-              <div className="text-xs text-gray-500">Typical shift</div>
+              <div className="text-xs text-gray-500">Typical day</div>
               <div className="text-sm font-semibold text-gray-900">
                 {totals.typicalVolume.toLocaleString()} {throughputUnit.toLowerCase()}
               </div>
@@ -113,7 +113,7 @@ export function VolumeSummaryPanel() {
               )}
             </div>
             <div>
-              <div className="text-xs text-gray-500">Peak shift</div>
+              <div className="text-xs text-gray-500">Peak day</div>
               <div className="text-sm font-semibold text-gray-900">
                 {totals.peakVolume.toLocaleString()} {throughputUnit.toLowerCase()}
               </div>
