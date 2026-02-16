@@ -3,7 +3,9 @@ import { supabase } from '../lib/supabase';
 import { ArrowLeft, Plus, Layers, Clock, Trash2, Play, Pencil, FileText, ClipboardList, BarChart3 } from 'lucide-react';
 import { exportComparativeAnalysis } from '../utils/comparativeExport';
 import { exportSetupInstructions } from '../utils/setupInstructionsExport';
-import { Activity, Zone, Corridor, Door } from '../types';
+import { generateLayoutSvg } from '../utils/layoutThumbnail';
+import { calculateLayoutScore } from '../utils/scoring';
+import { Activity, ActivityRelationship, VolumeTiming, Zone, Corridor, Door } from '../types';
 
 interface Layout {
   id: string;
@@ -161,10 +163,171 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
     setExportingLayout(null);
   };
 
-  // Open the layout at step 2F so user can export Floor Plan PDF with the grid image
-  const handleExportFloorPlan = (e: React.MouseEvent, layoutId: string) => {
+  // Export Floor Plan directly from DB data (no navigation needed)
+  const handleExportFloorPlan = async (e: React.MouseEvent, layoutId: string) => {
     e.stopPropagation();
-    onOpenLayout(projectId, layoutId, '2f');
+    setExportingLayout(layoutId);
+
+    const [settingsRes, zonesRes, activitiesRes, corridorsRes, doorsRes, paintedRes, volumeRes, relsRes, layoutRes] = await Promise.all([
+      supabase.from('app_settings').select('*').eq('project_id', projectId).maybeSingle(),
+      supabase.from('zones').select('*').eq('layout_id', layoutId),
+      supabase.from('activities').select('*').eq('project_id', projectId),
+      supabase.from('corridors').select('*').eq('layout_id', layoutId),
+      supabase.from('doors').select('*').eq('project_id', projectId),
+      supabase.from('painted_squares').select('*').eq('project_id', projectId),
+      supabase.from('volume_timing').select('*').eq('project_id', projectId),
+      supabase.from('activity_relationships').select('*').eq('project_id', projectId),
+      supabase.from('layouts').select('dismissed_flags').eq('id', layoutId).single(),
+    ]);
+
+    const s = settingsRes.data;
+    if (!s) { alert('No settings found.'); setExportingLayout(null); return; }
+
+    const zones = (zonesRes.data || []) as Zone[];
+    const activities = (activitiesRes.data || []) as Activity[];
+    const corridors = (corridorsRes.data || []) as Corridor[];
+    const doors = (doorsRes.data || []) as Door[];
+    const volumeTiming = (volumeRes.data || []) as VolumeTiming[];
+    const activityRelationships = (relsRes.data || []) as ActivityRelationship[];
+
+    const paintedSquares = new Map<string, { type: 'permanent' | 'semi-fixed' }>();
+    (paintedRes.data || []).forEach((sq: any) => {
+      paintedSquares.set(`${sq.row}-${sq.col}`, { type: sq.type });
+    });
+
+    const gridDims = {
+      rows: Math.floor(s.facility_height / s.square_size),
+      cols: Math.floor(s.facility_width / s.square_size),
+    };
+
+    const dismissedFlags = new Set<string>(
+      Array.isArray(layoutRes.data?.dismissed_flags) ? layoutRes.data.dismissed_flags : []
+    );
+
+    const scoreData = calculateLayoutScore(
+      zones, activities,
+      { squareSize: s.square_size, facilityWidth: s.facility_width, facilityHeight: s.facility_height },
+      activityRelationships, volumeTiming, doors, corridors, paintedSquares, gridDims, dismissedFlags
+    );
+
+    // Generate SVG from data
+    const svgMarkup = generateLayoutSvg({
+      zones, corridors, doors, activities, paintedSquares,
+      gridRows: gridDims.rows, gridCols: gridDims.cols,
+      squareSize: s.square_size,
+      facilityWidth: s.facility_width,
+      facilityHeight: s.facility_height,
+    });
+
+    const layoutObj = layouts.find(l => l.id === layoutId);
+    const layoutName = layoutObj?.name || 'Layout';
+
+    // Build and open the print window
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { alert('Please allow popups to export.'); setExportingLayout(null); return; }
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const unit = s.measurement_system === 'Metric' ? 'm' : 'ft';
+    const facilityDims = `${s.facility_width} × ${s.facility_height} ${unit}`;
+    const gridSize = `${s.square_size} ${unit} per square`;
+
+    const scoreColor = (pct: number) => pct >= 85 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
+    const sd = scoreData;
+
+    const html = `<!DOCTYPE html>
+<html><head><title>Floor Plan — ${layoutName}</title>
+<style>
+@page { size: landscape; margin: 0.5in; }
+@media print { .no-print { display: none !important; } .page { page-break-after: always; } .page:last-child { page-break-after: auto; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; line-height: 1.5; }
+.pbar { position: fixed; top: 0; left: 0; right: 0; background: #1f2937; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 100; font-size: 13px; }
+.pbar button { padding: 7px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.spacer { height: 46px; }
+.page { padding: 40px 52px; position: relative; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #e5e7eb; }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header .sub { font-size: 13px; color: #6b7280; margin-top: 2px; }
+.meta { text-align: right; font-size: 12px; color: #6b7280; line-height: 1.7; }
+.plan-svg { text-align: center; margin: 0 auto; }
+.plan-svg svg { max-width: 100%; max-height: 60vh; height: auto; display: block; margin: 0 auto; }
+.footer { position: absolute; bottom: 28px; left: 52px; right: 52px; display: flex; justify-content: space-between; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+.score-summary { display: flex; align-items: center; gap: 24px; margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 8px; }
+.score-circle { width: 80px; height: 80px; border-radius: 50%; border: 4px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; background: white; }
+.score-pct { font-size: 24px; font-weight: 700; }
+.score-pts { font-size: 11px; color: #6b7280; }
+.verdict-text { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.score-stats { font-size: 13px; color: #6b7280; }
+.ft { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ft th { text-align: left; padding: 8px 10px; background: #f3f4f6; border-bottom: 2px solid #d1d5db; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
+.ft td { padding: 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+.fn { font-weight: 600; }
+.fq { font-size: 11px; color: #9ca3af; }
+.sn { font-weight: 700; font-size: 14px; }
+.sm { color: #9ca3af; }
+.detail-list { padding: 4px 0 8px 0; }
+.detail-item { font-size: 12px; color: #4b5563; padding: 3px 8px; border-left: 3px solid #d1d5db; margin-bottom: 4px; background: #f9fafb; }
+.flag-item { font-size: 12px; padding: 6px 8px; margin-bottom: 4px; border-left: 3px solid; background: #f9fafb; }
+.flag-high { border-color: #dc2626; } .flag-medium { border-color: #d97706; } .flag-low { border-color: #3b82f6; }
+.flag-sev { font-weight: 700; font-size: 10px; text-transform: uppercase; margin-right: 6px; }
+.flag-msg { font-weight: 600; }
+.flag-rec { font-size: 11px; color: #6b7280; margin-top: 2px; }
+</style></head><body>
+<div class="no-print pbar"><span>Floor Plan — ${layoutName}</span><button onclick="window.print()">Print / Save PDF</button></div>
+<div class="no-print spacer"></div>
+
+<!-- PAGE 1: Floor Plan -->
+<div class="page">
+  <div class="header">
+    <div><h1>${layoutName} — Floor Plan</h1><div class="sub">${project.name} · FlowGrid Layout Planner</div></div>
+    <div class="meta">${dateStr}<br>${timeStr}<br>${facilityDims}<br>Grid: ${gridSize}</div>
+  </div>
+  <div class="plan-svg">${svgMarkup}</div>
+  <div class="footer"><span>Generated by FlowGrid Layout Planner</span><span>Verify measurements on site</span></div>
+</div>
+
+<!-- PAGE 2: Score Report -->
+<div class="page">
+  <div class="header">
+    <div><h1>${layoutName} — Score Report</h1><div class="sub">${project.name}</div></div>
+    <div class="meta">${dateStr}<br>${timeStr}</div>
+  </div>
+  <div class="score-summary">
+    <div class="score-circle" style="border-color:${scoreColor(sd.percentage)}">
+      <div class="score-pct">${sd.percentage}%</div>
+      <div class="score-pts">${sd.total} / ${sd.maxTotal}</div>
+    </div>
+    <div>
+      <div class="verdict-text">${sd.verdict}</div>
+      <div class="score-stats">${zones.filter(z => z.activity_id).length} zones · ${corridors.length} corridors · ${doors.length} doors · ${facilityDims}</div>
+    </div>
+  </div>
+  <table class="ft"><thead><tr><th style="width:30px"></th><th>Factor</th><th style="width:80px">Score</th><th>Summary</th></tr></thead><tbody>
+  ${sd.factors.map(f => {
+    const pct = f.maxScore > 0 ? (f.score / f.maxScore) * 100 : 0;
+    const icon = pct >= 90 ? '✓' : pct >= 50 ? '⚠' : '✗';
+    const ic = pct >= 90 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626';
+    const fName = f.label.split(':')[0];
+    const fQ = f.label.split(':')[1]?.trim() || '';
+    let rows = `<tr><td style="text-align:center"><span style="color:${ic};font-weight:bold;font-size:16px">${icon}</span></td><td><div class="fn">${fName}</div><div class="fq">${fQ}</div></td><td><span class="sn" style="color:${ic}">${f.score}</span> <span class="sm">/ ${f.maxScore}</span></td><td style="color:#4b5563">${f.display}</td></tr>`;
+    if (f.details.length > 0) {
+      rows += `<tr><td></td><td colspan="3"><div class="detail-list">${f.details.map(d => `<div class="detail-item">${d}</div>`).join('')}</div></td></tr>`;
+    }
+    if (f.flags && f.flags.filter(fl => !fl.isDismissed).length > 0) {
+      rows += `<tr><td></td><td colspan="3"><div class="detail-list">${f.flags.filter(fl => !fl.isDismissed).map(fl => `<div class="flag-item flag-${fl.severity.toLowerCase()}"><span class="flag-sev">${fl.severity}</span><span class="flag-msg">${fl.message}</span><div class="flag-rec">${fl.recommendation}</div></div>`).join('')}</div></td></tr>`;
+    }
+    return rows;
+  }).join('')}
+  </tbody></table>
+  <div class="footer"><span>${project.name} — ${layoutName}</span><span>Score Report</span></div>
+</div>
+</body></html>`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setExportingLayout(null);
   };
 
   const handleComparativeAnalysis = async (e: React.MouseEvent) => {
@@ -372,8 +535,8 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
                     {/* Per-layout exports */}
                     <button
                       onClick={(e) => handleExportFloorPlan(e, layout.id)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                      title="Export Floor Plan PDF (opens layout)"
+                      className={`p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 ${exportingLayout === layout.id ? 'animate-pulse' : ''}`}
+                      title="Export Floor Plan PDF"
                     >
                       <FileText className="w-4 h-4" />
                     </button>

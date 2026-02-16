@@ -247,15 +247,6 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
                       {/* Top row: name + meta */}
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold text-gray-900 truncate">{project.name}</h3>
-                        {bestScore !== null && (
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            bestScore >= 85 ? 'bg-green-100 text-green-800' :
-                            bestScore >= 60 ? 'bg-amber-100 text-amber-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {bestScore}%
-                          </span>
-                        )}
                       </div>
 
                       {/* Details row */}
@@ -277,7 +268,7 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
                       </div>
 
                       {/* Layout pills */}
-                      {project.layouts.length > 1 && (
+                      {project.layouts.length > 0 && (
                         <div className="flex items-center gap-2 mt-3">
                           {project.layouts.map((layout) => (
                             <span
