@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { calculateLayoutScore, LayoutScore } from './scoring';
 import { Activity, ActivityRelationship, Corridor, Door, VolumeTiming, Zone } from '../types';
+import { generateLayoutSvg } from './layoutThumbnail';
 
 interface LayoutAnalysis {
   id: string;
@@ -13,6 +14,9 @@ interface LayoutAnalysis {
   corridorSqFt: number;
   created_at: string;
   updated_at: string;
+  zones: Zone[];
+  corridors: Corridor[];
+  svgMarkup: string;
 }
 
 export async function exportComparativeAnalysis(projectId: string) {
@@ -79,7 +83,6 @@ export async function exportComparativeAnalysis(projectId: string) {
     const zones = (zonesRes.data || []) as Zone[];
     const corridors = (corridorsRes.data || []) as Corridor[];
 
-    // Load dismissed flags for this layout so score matches the editor
     const dismissedFlags = new Set<string>(
       Array.isArray(layout.dismissed_flags) ? layout.dismissed_flags : []
     );
@@ -96,6 +99,15 @@ export async function exportComparativeAnalysis(projectId: string) {
       corridorSqFt += len * c.width * sqFt;
     });
 
+    // Generate SVG thumbnail
+    const svgMarkup = generateLayoutSvg({
+      zones, corridors, doors, activities, paintedSquares,
+      gridRows: gridDims.rows, gridCols: gridDims.cols,
+      squareSize: s.square_size,
+      facilityWidth: s.facility_width,
+      facilityHeight: s.facility_height,
+    });
+
     layoutAnalyses.push({
       id: layout.id,
       name: layout.name,
@@ -107,6 +119,9 @@ export async function exportComparativeAnalysis(projectId: string) {
       corridorSqFt,
       created_at: layout.created_at,
       updated_at: layout.updated_at,
+      zones,
+      corridors,
+      svgMarkup,
     });
   }
 
@@ -203,8 +218,8 @@ export async function exportComparativeAnalysis(projectId: string) {
     return `<tr><td class="fl"><div class="fl-name">${factorLabel}</div><div class="fl-wt">${maxPts} pts</div></td>${cells}</tr>`;
   }).join('');
 
-  // ── Detail issues per layout ──
-  const detailSections = layoutAnalyses.map(la => {
+  // ── Detail issues per layout (for side-by-side) ──
+  const detailColumns = layoutAnalyses.map(la => {
     const issues = la.score.factors
       .filter(f => f.details.length > 0 || (f.flags && f.flags.filter(fl => !fl.isDismissed).length > 0))
       .map(f => {
@@ -300,6 +315,16 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .qs-val{font-size:15px;font-weight:700;color:var(--g800);}
 .qs-label{font-size:9px;color:var(--g400);text-transform:uppercase;letter-spacing:0.06em;margin-top:1px;}
 
+/* ─── Floor plan strip ─── */
+.fp-strip{display:flex;gap:24px;margin-top:8px;}
+.fp-card{flex:1;border:1.5px solid var(--g200);border-radius:8px;padding:16px;text-align:center;}
+.fp-card-best{border-color:#6ee7b7;}
+.fp-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.fp-card-name{font-size:13px;font-weight:700;color:var(--g800);}
+.fp-card-score{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;}
+.fp-card-svg{display:flex;justify-content:center;align-items:center;}
+.fp-card-svg svg{width:100%;height:auto;max-height:320px;}
+
 /* ─── Factor table ─── */
 .ft{width:100%;border-collapse:separate;border-spacing:0;}
 .ft thead th{padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--g500);background:var(--g50);border-bottom:2px solid var(--g200);text-align:left;}
@@ -323,11 +348,12 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .flist li::before{counter-increment:fi;content:counter(fi);position:absolute;left:12px;top:12px;width:20px;height:20px;border-radius:50%;background:var(--blue50);color:var(--blue);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
 .flist li strong{color:var(--g900);}
 
-/* ─── Detail issues ─── */
-.dl{margin-bottom:24px;}
-.dl-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:6px;border-bottom:1.5px solid var(--g200);}
-.dl-name{font-size:14px;font-weight:700;color:var(--g800);}
-.dl-badge{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;}
+/* ─── Side-by-side detail issues ─── */
+.issues-grid{display:flex;gap:24px;}
+.issues-col{flex:1;min-width:0;}
+.issues-col-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--g200);}
+.issues-col-name{font-size:14px;font-weight:700;color:var(--g800);}
+.issues-col-badge{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;}
 .ig{margin-bottom:10px;}
 .ig-label{font-size:10px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;}
 .ig-list{list-style:none;padding-left:10px;}
@@ -335,10 +361,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .sev{font-weight:700;font-size:9px;text-transform:uppercase;margin-right:3px;}
 .sev-high{color:#b91c1c;}.sev-medium{color:#b45309;}.sev-low{color:#2563eb;}
 .no-iss{font-size:12px;color:#059669;font-style:italic;padding:6px 10px;background:#f0fdf4;border-radius:4px;}
-
-/* ─── Note box ─── */
-.note{margin-top:20px;padding:12px 16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;font-size:11px;color:#92400e;line-height:1.5;}
-.note strong{color:#78350f;}
 </style>
 </head>
 <body>
@@ -352,9 +374,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 <div class="page cover">
   <div class="cover-top">
     <div class="cover-logo">FlowGrid Layout Planner</div>
-    <div class="cover-date">
-      ${dateStr}<br>${timeStr}
-    </div>
+    <div class="cover-date">${dateStr}<br>${timeStr}</div>
   </div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
     <div class="cover-rule"></div>
@@ -378,7 +398,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   </div>
 </div>
 
-<!-- ════════════════════ PAGE 2: SUMMARY ════════════════════ -->
+<!-- ════════════════════ PAGE 2: EXECUTIVE SUMMARY + SCORES ════════════════════ -->
 <div class="page">
   <div class="sh">
     <div class="sh-num">01</div>
@@ -407,7 +427,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
       `).join('')}
     </div>
 
-    <!-- Quick stats -->
     <div class="qs">
       ${layoutAnalyses.map(la => `
         <div class="qs-col">
@@ -419,18 +438,43 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
     </div>
   </div>
 
-
-
   <div class="pf">
     <span>${project.name} — Comparative Layout Analysis</span>
     <span>Page 2</span>
   </div>
 </div>
 
-<!-- ════════════════════ PAGE 3: FACTOR COMPARISON ════════════════════ -->
+<!-- ════════════════════ PAGE 3: FLOOR PLANS ════════════════════ -->
 <div class="page">
   <div class="sh">
     <div class="sh-num">03</div>
+    <div class="sh-title">Floor Plan Comparison</div>
+    <div class="sh-sub">Side-by-side view of zone placement, corridors, and door positions</div>
+    <div class="sh-rule"></div>
+  </div>
+
+  <div class="fp-strip">
+    ${layoutAnalyses.map((la, i) => `
+      <div class="fp-card ${i === 0 ? 'fp-card-best' : ''}">
+        <div class="fp-card-header">
+          <span class="fp-card-name">${la.name}</span>
+          <span class="fp-card-score" style="background:${scoreBg(la.score.percentage)};color:${scoreColor(la.score.percentage)};border:1px solid ${scoreBorder(la.score.percentage)};">${la.score.percentage}%</span>
+        </div>
+        <div class="fp-card-svg">${la.svgMarkup}</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <div class="pf">
+    <span>${project.name} — Comparative Layout Analysis</span>
+    <span>Page 3</span>
+  </div>
+</div>
+
+<!-- ════════════════════ PAGE 4: FACTOR COMPARISON ════════════════════ -->
+<div class="page">
+  <div class="sh">
+    <div class="sh-num">04</div>
     <div class="sh-title">Factor-by-Factor Comparison</div>
     <div class="sh-sub"><span style="color:#059669;">●</span> marks the leading layout in each category</div>
     <div class="sh-rule"></div>
@@ -461,15 +505,15 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 
   <div class="pf">
     <span>${project.name} — Comparative Layout Analysis</span>
-    <span>Page 3</span>
+    <span>Page 4</span>
   </div>
 </div>
 
-<!-- ════════════════════ PAGE 4: FINDINGS + DETAILS ════════════════════ -->
+<!-- ════════════════════ PAGE 5: FINDINGS + ISSUES ════════════════════ -->
 <div class="page">
   ${findings.length > 0 ? `
   <div class="sh">
-    <div class="sh-num">04</div>
+    <div class="sh-num">05</div>
     <div class="sh-title">Key Differences</div>
     <div class="sh-sub">Factors where layouts diverge in performance</div>
     <div class="sh-rule"></div>
@@ -479,25 +523,27 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   ` : ''}
 
   <div class="sh">
-    <div class="sh-num">${findings.length > 0 ? '05' : '04'}</div>
+    <div class="sh-num">${findings.length > 0 ? '06' : '05'}</div>
     <div class="sh-title">Detailed Issues by Layout</div>
-    <div class="sh-sub">Warnings and improvement opportunities</div>
+    <div class="sh-sub">Side-by-side warnings and improvement opportunities</div>
     <div class="sh-rule"></div>
   </div>
 
-  ${detailSections.map(ld => `
-    <div class="dl">
-      <div class="dl-head">
-        <span class="dl-name">${ld.name}</span>
-        <span class="dl-badge" style="background:${scoreBg(ld.pct)};color:${scoreColor(ld.pct)};border:1px solid ${scoreBorder(ld.pct)};">${ld.pct}%</span>
+  <div class="issues-grid">
+    ${detailColumns.map(dc => `
+      <div class="issues-col">
+        <div class="issues-col-header">
+          <span class="issues-col-name">${dc.name}</span>
+          <span class="issues-col-badge" style="background:${scoreBg(dc.pct)};color:${scoreColor(dc.pct)};border:1px solid ${scoreBorder(dc.pct)};">${dc.pct}%</span>
+        </div>
+        ${dc.issues || '<div class="no-iss">No outstanding issues — all factors performing well.</div>'}
       </div>
-      ${ld.issues || '<div class="no-iss">No outstanding issues — all factors performing well.</div>'}
-    </div>
-  `).join('')}
+    `).join('')}
+  </div>
 
   <div class="pf">
     <span>${project.name} — Comparative Layout Analysis</span>
-    <span>Page ${findings.length > 0 ? '4' : '4'}</span>
+    <span>Page 5</span>
   </div>
 </div>
 
