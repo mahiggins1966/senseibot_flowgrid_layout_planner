@@ -155,6 +155,16 @@ function App() {
       <ObjectPopup />
       <ZoneEditor />
 
+      {needsGrid && gridHelpDismissed && (
+        <button
+          onClick={() => setGridHelpDismissed(false)}
+          className="absolute top-14 left-[340px] z-40 w-7 h-7 flex items-center justify-center bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-white transition-colors text-sm font-semibold"
+          title="Show grid controls"
+        >
+          ?
+        </button>
+      )}
+
       {needsGrid && !gridHelpDismissed && (
         <div className="absolute top-14 left-[340px] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-4 py-3 text-xs text-gray-700 border border-gray-200 z-40" style={{ maxWidth: '260px' }}>
           <div className="flex items-center justify-between mb-2">
