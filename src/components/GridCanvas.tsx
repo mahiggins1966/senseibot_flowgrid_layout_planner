@@ -1480,24 +1480,24 @@ export function GridCanvas() {
                 {hoveredZone === zone.id && !isDrawingZone && !draggingZone && (() => {
                   const tooltipX = MARGIN + zone.grid_x * CELL_SIZE + (zone.grid_width * CELL_SIZE) / 2;
                   const tooltipY = MARGIN + zone.grid_y * CELL_SIZE - 8;
-                  const textLen = zone.name.length * 6.5 + 16;
+                  const textLen = zone.name.length * 8.5 + 20;
                   return (
                     <g className="pointer-events-none">
                       <rect
                         x={tooltipX - textLen / 2}
-                        y={tooltipY - 16}
+                        y={tooltipY - 22}
                         width={textLen}
-                        height={20}
-                        rx="4"
+                        height={26}
+                        rx="5"
                         fill="#1F2937"
                         opacity="0.9"
                       />
                       <text
                         x={tooltipX}
-                        y={tooltipY - 6}
+                        y={tooltipY - 9}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fontSize="11"
+                        fontSize="14"
                         fontWeight="600"
                         fill="white"
                         className="select-none"
@@ -1882,24 +1882,24 @@ export function GridCanvas() {
                   if (!isHovered) return null;
                   const tooltipX = MARGIN + object.grid_x * CELL_SIZE + (object.grid_width * CELL_SIZE) / 2;
                   const tooltipY = MARGIN + object.grid_y * CELL_SIZE - 8;
-                  const textLen = object.object_name.length * 6.5 + 16;
+                  const textLen = object.object_name.length * 8.5 + 20;
                   return (
                     <g className="pointer-events-none">
                       <rect
                         x={tooltipX - textLen / 2}
-                        y={tooltipY - 16}
+                        y={tooltipY - 22}
                         width={textLen}
-                        height={20}
-                        rx="4"
+                        height={26}
+                        rx="5"
                         fill="#1F2937"
                         opacity="0.9"
                       />
                       <text
                         x={tooltipX}
-                        y={tooltipY - 6}
+                        y={tooltipY - 9}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fontSize="11"
+                        fontSize="14"
                         fontWeight="600"
                         fill="white"
                         className="select-none"
