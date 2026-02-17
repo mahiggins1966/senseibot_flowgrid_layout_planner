@@ -1897,18 +1897,22 @@ export function GridCanvas() {
                     }
                   }}
                 />
-                <text
-                  x={centerX}
-                  y={centerY}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="11"
-                  fontWeight="bold"
-                  fill={textColor}
-                  className="select-none pointer-events-none"
-                >
-                  {corridor.name}
-                </text>
+                {/* Icon instead of text label */}
+                {corridor.type === 'pedestrian' ? (
+                  /* Walking person silhouette */
+                  <g transform={`translate(${centerX - 8}, ${centerY - 10})`} className="pointer-events-none" opacity="0.7">
+                    <circle cx="8" cy="3" r="2.5" fill={textColor} />
+                    <path d="M5 7.5 L8 13 L6 20 M11 7.5 L8 13 L10 20 M4 10 L8 9 L12 10" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  </g>
+                ) : (
+                  /* Forklift silhouette */
+                  <g transform={`translate(${centerX - 12}, ${centerY - 10})`} className="pointer-events-none" opacity="0.7">
+                    <path d="M2 18 L2 6 L10 6 L10 2 L18 2 L18 4 L12 4 L12 8 L14 8 L14 18" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                    <circle cx="5" cy="18" r="2" fill={textColor} />
+                    <circle cx="14" cy="18" r="2" fill={textColor} />
+                    <path d="M18 2 L22 2 L22 8 L18 8" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  </g>
+                )}
 
                 {/* Resize handles — visible on hover */}
                 {hoveredCorridor === corridor.id && !isDrawingCorridor && !isDrawingZone && (() => {
