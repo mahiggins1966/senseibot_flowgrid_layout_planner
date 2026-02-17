@@ -105,6 +105,14 @@ export function GridCanvas() {
   const [hoveredCorridor, setHoveredCorridor] = useState<string | null>(null);
   const [hoveredDoor, setHoveredDoor] = useState<string | null>(null);
   const [corridorPreviewEnd, setCorridorPreviewEnd] = useState<{ row: number; col: number } | null>(null);
+  const [layoutOnlyToast, setLayoutOnlyToast] = useState(false);
+  const layoutOnlyTimer = useRef<number | null>(null);
+
+  const showLayoutOnlyToast = () => {
+    if (layoutOnlyTimer.current) clearTimeout(layoutOnlyTimer.current);
+    setLayoutOnlyToast(true);
+    layoutOnlyTimer.current = window.setTimeout(() => setLayoutOnlyToast(false), 2500);
+  };
 
   const dragCleanupRef = useRef<(() => void) | null>(null);
 
@@ -448,6 +456,18 @@ export function GridCanvas() {
 
     setIsMouseDown(false);
 
+    // CORRIDOR: support click-drag (create on mouseUp if start was set during this drag)
+    if (isDrawingCorridor && selectedCorridorType && corridorDrawStart) {
+      if (!canInteractWithZones()) return;
+      // Only create if the user actually dragged to a different square
+      if (row !== corridorDrawStart.row || col !== corridorDrawStart.col) {
+        if (previewCorridor && previewCorridor.isValid) {
+          createCorridor(corridorDrawStart, { row, col, label: getGridCoordinate(row, col).label }, selectedCorridorType);
+        }
+      }
+      return;
+    }
+
     if (isAddingDoor && doorDrawStart) {
       if (!canInteractWithDoors()) return;
       const edge = getBoundaryEdge(row, col);
@@ -733,7 +753,10 @@ export function GridCanvas() {
 
   const handleObjectClick = (e: React.MouseEvent, object: PlacedObject) => {
     e.stopPropagation();
-    if (!canInteractWithObjects()) return;
+    if (!canInteractWithObjects()) {
+      showLayoutOnlyToast();
+      return;
+    }
     setSelectedObject(object);
   };
 
@@ -881,7 +904,10 @@ export function GridCanvas() {
 
   const handleZoneClick = (e: React.MouseEvent, zone: Zone) => {
     e.stopPropagation();
-    if (!canInteractWithZones()) return;
+    if (!canInteractWithZones()) {
+      showLayoutOnlyToast();
+      return;
+    }
     if (!isDrawingZone && !draggingZone && !resizingZone) {
       setSelectedZone(zone);
     }
@@ -1238,7 +1264,7 @@ export function GridCanvas() {
             }
 
             return (
-              <g key={zone.id} onClick={(e) => handleZoneClick(e, zone)}>
+              <g key={zone.id} onClick={(e) => handleZoneClick(e, zone)} style={{ pointerEvents: isDrawingCorridor ? 'none' : 'auto' }}>
                 {/* Glow effect - outer rects with multiple layers for visibility */}
                 {glowInfo && (
                   <>
@@ -1847,7 +1873,8 @@ export function GridCanvas() {
                 onClick={(e) => handleObjectClick(e, object)}
                 style={{
                   opacity: isBeingRepositioned ? 0.3 : 1,
-                  cursor: 'move'
+                  cursor: 'move',
+                  pointerEvents: isDrawingCorridor ? 'none' : 'auto',
                 }}
               >
                 <rect
@@ -1950,9 +1977,14 @@ export function GridCanvas() {
 
             return (
               <g key={corridor.id} onClick={(e) => {
+                if (isDrawingCorridor) return;
                 e.stopPropagation();
+                if (!canInteractWithZones()) {
+                  showLayoutOnlyToast();
+                  return;
+                }
                 setSelectedCorridor(corridor);
-              }}>
+              }} style={{ pointerEvents: isDrawingCorridor ? 'none' : 'auto' }}>
                 <rect
                   x={x}
                   y={y}
@@ -2256,7 +2288,7 @@ export function GridCanvas() {
                 : y - 8;
 
             return (
-              <g key={door.id}>
+              <g key={door.id} style={{ pointerEvents: isDrawingCorridor ? 'none' : 'auto' }}>
                 <rect
                   x={x}
                   y={y}
@@ -2374,6 +2406,12 @@ export function GridCanvas() {
         </g>
       </svg>
 
+      {/* Layout-only toast */}
+      {layoutOnlyToast && (
+        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/90 backdrop-blur text-white px-5 py-2.5 rounded-lg shadow-lg text-sm font-medium animate-fade-in">
+          You can only change this in the <strong>Layout</strong> step
+        </div>
+      )}
     </div>
   );
 }
