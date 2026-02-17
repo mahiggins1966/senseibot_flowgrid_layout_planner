@@ -7,6 +7,7 @@ import { ObjectPopup } from './components/ObjectPopup';
 import { ZoneEditor } from './components/ZoneEditor';
 import { useGridStore } from './store/gridStore';
 import { supabase } from './lib/supabase';
+import { Route } from 'lucide-react';
 
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
 type AppView = 'home' | 'dashboard' | 'editor';
@@ -20,6 +21,8 @@ function App() {
     setCurrentSubStep: setStoreSubStep,
     setActiveProject,
     setActiveLayout,
+    flowOverlayEnabled,
+    toggleFlowOverlay,
   } = useGridStore();
 
   const [view, setView] = useState<AppView>('home');
@@ -162,6 +165,22 @@ function App() {
           title="Show grid controls"
         >
           ?
+        </button>
+      )}
+
+      {needsGrid && (
+        <button
+          onClick={toggleFlowOverlay}
+          className={`absolute top-14 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-lg border text-xs font-semibold transition-colors ${
+            flowOverlayEnabled
+              ? 'bg-slate-700 text-white border-slate-600 hover:bg-slate-800'
+              : 'bg-white/95 backdrop-blur-sm text-gray-500 border-gray-200 hover:text-gray-800 hover:bg-white'
+          }`}
+          style={{ left: gridHelpDismissed ? '380px' : '615px' }}
+          title="Toggle material flow overlay"
+        >
+          <Route className="w-3.5 h-3.5" />
+          Flow
         </button>
       )}
 
