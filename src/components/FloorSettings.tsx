@@ -11,8 +11,8 @@ export function FloorSettings() {
   const { settings, updateSettings, getGridDimensions, doors } = useGridStore();
   const gridDimensions = getGridDimensions();
 
-  const [facilityOpen, setFacilityOpen] = useState(true);
-  const [doorsOpen, setDoorsOpen] = useState(true);
+  const [facilityOpen, setFacilityOpen] = useState(false);
+  const [doorsOpen, setDoorsOpen] = useState(false);
 
   const [widthUnit, setWidthUnit] = useState<DimensionUnit>(
     settings.measurementSystem === 'US' ? 'feet' : 'meters'
