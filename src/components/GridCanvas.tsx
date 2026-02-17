@@ -89,6 +89,7 @@ export function GridCanvas() {
     hoveredSquare,
     setHoveredSquare,
     updateCorridor,
+    flowOverlayEnabled,
   } = useGridStore();
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [isDraggingObject, setIsDraggingObject] = useState(false);
@@ -2342,6 +2343,132 @@ export function GridCanvas() {
               </g>
             );
           })}
+
+          {/* ===== MATERIAL FLOW OVERLAY ===== */}
+          {flowOverlayEnabled && (() => {
+            // 1. Get activities with sequence_order, sorted
+            const sequencedActivities = activities
+              .filter((a: any) => a.sequence_order != null && a.sequence_order > 0)
+              .sort((a: any, b: any) => (a.sequence_order || 0) - (b.sequence_order || 0));
+
+            if (sequencedActivities.length < 2) return null;
+
+            // 2. Map each activity to its zone center(s)
+            const activityZoneCenters = sequencedActivities.map((act: any) => {
+              const actZones = zones.filter((z: any) => z.activity_id === act.id);
+              if (actZones.length === 0) return null;
+              // Average center of all zones for this activity
+              let cx = 0, cy = 0;
+              for (const z of actZones) {
+                cx += MARGIN + z.grid_x * CELL_SIZE + (z.grid_width * CELL_SIZE) / 2;
+                cy += MARGIN + z.grid_y * CELL_SIZE + (z.grid_height * CELL_SIZE) / 2;
+              }
+              return {
+                activity: act,
+                x: cx / actZones.length,
+                y: cy / actZones.length,
+                zones: actZones,
+              };
+            }).filter(Boolean) as Array<{ activity: any; x: number; y: number; zones: any[] }>;
+
+            if (activityZoneCenters.length < 2) return null;
+
+            // 3. Build flow segments
+            const segments: Array<{ from: typeof activityZoneCenters[0]; to: typeof activityZoneCenters[0]; index: number }> = [];
+            for (let i = 0; i < activityZoneCenters.length - 1; i++) {
+              segments.push({ from: activityZoneCenters[i], to: activityZoneCenters[i + 1], index: i });
+            }
+
+            return (
+              <g className="flow-overlay" style={{ pointerEvents: 'none' }}>
+                {/* Arrowhead marker */}
+                <defs>
+                  <marker
+                    id="flow-arrow"
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="6"
+                    markerHeight="6"
+                    orient="auto-start-reverse"
+                  >
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569" opacity="0.7" />
+                  </marker>
+                  <style>{`
+                    @keyframes flowDash {
+                      to { stroke-dashoffset: -24; }
+                    }
+                  `}</style>
+                </defs>
+
+                {/* Flow arrows — Bézier curves */}
+                {segments.map((seg, idx) => {
+                  const dx = seg.to.x - seg.from.x;
+                  const dy = seg.to.y - seg.from.y;
+                  const dist = Math.sqrt(dx * dx + dy * dy);
+                  // Curve offset perpendicular to the line
+                  const curvature = Math.min(dist * 0.25, 40);
+                  // Perpendicular direction
+                  const nx = -dy / (dist || 1);
+                  const ny = dx / (dist || 1);
+                  const mx = (seg.from.x + seg.to.x) / 2 + nx * curvature;
+                  const my = (seg.from.y + seg.to.y) / 2 + ny * curvature;
+
+                  const pathD = `M ${seg.from.x} ${seg.from.y} Q ${mx} ${my} ${seg.to.x} ${seg.to.y}`;
+
+                  return (
+                    <g key={`flow-${idx}`}>
+                      {/* Shadow path for visibility */}
+                      <path
+                        d={pathD}
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="5"
+                        opacity="0.5"
+                        strokeLinecap="round"
+                      />
+                      {/* Animated flow line */}
+                      <path
+                        d={pathD}
+                        fill="none"
+                        stroke="#475569"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeDasharray="8,4"
+                        markerEnd="url(#flow-arrow)"
+                        opacity="0.7"
+                        style={{ animation: 'flowDash 1.5s linear infinite' }}
+                      />
+                    </g>
+                  );
+                })}
+
+                {/* Circled sequence numbers at each zone center */}
+                {activityZoneCenters.map((node, idx) => (
+                  <g key={`seq-${idx}`}>
+                    <circle
+                      cx={node.x}
+                      cy={node.y - (node.zones[0]?.grid_height || 2) * CELL_SIZE / 2 - 14}
+                      r="11"
+                      fill="#1E293B"
+                      opacity="0.85"
+                    />
+                    <text
+                      x={node.x}
+                      y={node.y - (node.zones[0]?.grid_height || 2) * CELL_SIZE / 2 - 14}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize="11"
+                      fontWeight="700"
+                      fill="white"
+                    >
+                      {node.activity.sequence_order}
+                    </text>
+                  </g>
+                ))}
+              </g>
+            );
+          })()}
 
           {Array.from({ length: gridDimensions.cols + 1 }).map((_, i) => (
             <line

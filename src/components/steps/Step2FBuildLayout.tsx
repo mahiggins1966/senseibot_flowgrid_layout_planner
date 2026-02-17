@@ -6,7 +6,7 @@ import { ScoringPanel } from '../ScoringPanel';
 import { CorridorDrawer } from '../CorridorDrawer';
 import { CorridorPopup } from '../CorridorPopup';
 import { useGridStore } from '../../store/gridStore';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Route } from 'lucide-react';
 import { OSHA_LEGEND } from '../../utils/oshaColors';
 
 interface Step2FBuildLayoutProps {
@@ -14,7 +14,7 @@ interface Step2FBuildLayoutProps {
 }
 
 export function Step2FBuildLayout({ onComplete }: Step2FBuildLayoutProps) {
-  const { completeStep, safetyOverlayEnabled, toggleSafetyOverlay } = useGridStore();
+  const { completeStep, safetyOverlayEnabled, toggleSafetyOverlay, flowOverlayEnabled, toggleFlowOverlay } = useGridStore();
 
   const handleComplete = () => {
     completeStep('step2');
@@ -67,6 +67,18 @@ export function Step2FBuildLayout({ onComplete }: Step2FBuildLayoutProps) {
             >
               {safetyOverlayEnabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               <span>Safety View</span>
+            </button>
+
+            <button
+              onClick={toggleFlowOverlay}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                flowOverlayEnabled
+                  ? 'bg-slate-600 text-white hover:bg-slate-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              <Route className="w-4 h-4" />
+              <span>Material Flow</span>
             </button>
 
             <div className="text-xs text-gray-600">
