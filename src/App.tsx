@@ -25,6 +25,7 @@ function App() {
   const [view, setView] = useState<AppView>('home');
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [currentSubStep, setCurrentSubStep] = useState<SubStep>('2a');
+  const [gridHelpDismissed, setGridHelpDismissed] = useState(false);
 
   useEffect(() => {
     setStoreSubStep(currentSubStep);
@@ -154,12 +155,22 @@ function App() {
       <ObjectPopup />
       <ZoneEditor />
 
-      {needsGrid && (
-        <div className="absolute bottom-4 left-[400px] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 text-xs text-gray-700 border border-gray-200">
-          <div className="font-medium mb-1">Grid Controls:</div>
-          <div className="space-y-0.5 text-[10px]">
-            <div>Scroll to zoom, Shift+Drag to pan</div>
-            <div>Touch: Pinch zoom, Two-finger pan</div>
+      {needsGrid && !gridHelpDismissed && (
+        <div className="absolute top-14 left-[340px] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 text-xs text-gray-700 border border-gray-200 z-40">
+          <div className="flex items-center justify-between gap-4 mb-1">
+            <span className="font-medium">Grid Controls</span>
+            <button
+              onClick={() => setGridHelpDismissed(true)}
+              className="text-gray-400 hover:text-gray-600 transition-colors leading-none text-sm"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-0.5 text-[10px] text-gray-500">
+            <div><strong>Zoom:</strong> Ctrl+Scroll · Pinch</div>
+            <div><strong>Pan:</strong> Scroll · Space+Drag · Middle‑click drag</div>
+            <div><strong>Cancel:</strong> Esc</div>
           </div>
         </div>
       )}
