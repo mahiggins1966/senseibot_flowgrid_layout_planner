@@ -156,21 +156,39 @@ function App() {
       <ZoneEditor />
 
       {needsGrid && !gridHelpDismissed && (
-        <div className="absolute top-14 left-[340px] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 text-xs text-gray-700 border border-gray-200 z-40">
-          <div className="flex items-center justify-between gap-4 mb-1">
-            <span className="font-medium">Grid Controls</span>
+        <div className="absolute top-14 left-[340px] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-4 py-3 text-xs text-gray-700 border border-gray-200 z-40" style={{ maxWidth: '260px' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-semibold text-gray-900 text-sm">Grid Controls</span>
             <button
               onClick={() => setGridHelpDismissed(true)}
-              className="text-gray-400 hover:text-gray-600 transition-colors leading-none text-sm"
+              className="text-gray-400 hover:text-gray-600 transition-colors leading-none text-base"
               title="Dismiss"
             >
               ✕
             </button>
           </div>
-          <div className="space-y-0.5 text-[10px] text-gray-500">
-            <div><strong>Zoom:</strong> Ctrl+Scroll · Pinch</div>
-            <div><strong>Pan:</strong> Scroll · Space+Drag · Middle‑click drag</div>
-            <div><strong>Cancel:</strong> Esc</div>
+
+          <div className="space-y-2 text-[11px] text-gray-600">
+            <div>
+              <div className="font-semibold text-gray-800 mb-0.5">Move Around</div>
+              <div>Scroll to pan up &amp; down</div>
+              <div>Shift + Scroll to pan left &amp; right</div>
+              <div>Space + Drag for free movement</div>
+            </div>
+            <div>
+              <div className="font-semibold text-gray-800 mb-0.5">Zoom In / Out</div>
+              <div>Ctrl + Scroll (Cmd on Mac)</div>
+              <div>Trackpad pinch gesture</div>
+            </div>
+            <div>
+              <div className="font-semibold text-gray-800 mb-0.5">Zones &amp; Objects</div>
+              <div>Click to select</div>
+              <div>Hold + Drag to move</div>
+              <div>Hover a zone to show resize handles</div>
+            </div>
+            <div className="pt-1 border-t border-gray-200 text-gray-400">
+              Press <strong className="text-gray-600">Esc</strong> to cancel any active tool
+            </div>
           </div>
         </div>
       )}
