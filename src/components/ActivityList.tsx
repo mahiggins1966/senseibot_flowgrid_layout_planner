@@ -146,7 +146,6 @@ export function ActivityList() {
                 >
                   <option value="work-area">Work Area</option>
                   <option value="staging-lane">Staging Lane</option>
-                  <option value="corridor">Corridor / Path</option>
                   <option value="support-area">Support Area</option>
                 </select>
               </div>
@@ -172,7 +171,19 @@ export function ActivityList() {
                 />
               </div>
 
-              {activity.type === 'staging-lane' && (
+              {/* Color picker — all activity types */}
+              <div className="col-span-1">
+                <label className="text-xs font-medium text-gray-700 block mb-1">Color</label>
+                <input
+                  type="color"
+                  value={activity.color || (activity.type === 'work-area' ? '#16A34A' : activity.type === 'staging-lane' ? '#2563EB' : '#7C3AED')}
+                  onChange={(e) => handleUpdateActivity(activity.id, 'color', e.target.value)}
+                  className="w-full h-[38px] border border-gray-300 rounded cursor-pointer"
+                />
+              </div>
+
+              {/* Staging-lane-specific fields */}
+              {activity.type === 'staging-lane' ? (
                 <>
                   <div className="col-span-1">
                     <label className="text-xs font-medium text-gray-700 block mb-1">
@@ -186,16 +197,6 @@ export function ActivityList() {
                       }
                       placeholder="MKK"
                       className="w-full px-2 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div className="col-span-1">
-                    <label className="text-xs font-medium text-gray-700 block mb-1">Color</label>
-                    <input
-                      type="color"
-                      value={activity.color || '#3B82F6'}
-                      onChange={(e) => handleUpdateActivity(activity.id, 'color', e.target.value)}
-                      className="w-full h-[38px] border border-gray-300 rounded cursor-pointer"
                     />
                   </div>
 
@@ -213,10 +214,8 @@ export function ActivityList() {
                     />
                   </div>
                 </>
-              )}
-
-              {activity.type !== 'staging-lane' && (
-                <div className="col-span-4"></div>
+              ) : (
+                <div className="col-span-3"></div>
               )}
 
               <div className="col-span-1 flex items-end justify-end h-full pb-1">

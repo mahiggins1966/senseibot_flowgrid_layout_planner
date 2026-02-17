@@ -540,7 +540,7 @@ export function GridCanvas() {
       if (activity) {
         zoneName = activity.name;
         activityId = activity.id;
-        zoneColor = getActivityColor(activity.type);
+        zoneColor = activity.color || getActivityColor(activity.type);
       }
     }
 
