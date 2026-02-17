@@ -88,6 +88,7 @@ export function GridCanvas() {
     setSelectedCorridorType,
     hoveredSquare,
     setHoveredSquare,
+    updateCorridor,
   } = useGridStore();
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [isDraggingObject, setIsDraggingObject] = useState(false);
@@ -101,6 +102,7 @@ export function GridCanvas() {
   const [moveStatus, setMoveStatus] = useState<{ name: string; targetCell: string } | null>(null);
   const [originalPosition, setOriginalPosition] = useState<{ x: number; y: number } | null>(null);
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
+  const [hoveredCorridor, setHoveredCorridor] = useState<string | null>(null);
   const [corridorPreviewEnd, setCorridorPreviewEnd] = useState<{ row: number; col: number } | null>(null);
 
   const dragCleanupRef = useRef<(() => void) | null>(null);
@@ -1884,6 +1886,8 @@ export function GridCanvas() {
                   strokeWidth="2"
                   opacity="0.5"
                   className="cursor-pointer"
+                  onMouseEnter={() => setHoveredCorridor(corridor.id)}
+                  onMouseLeave={() => setHoveredCorridor(null)}
                   onMouseMove={(e) => {
                     if (!svgRef.current) return;
                     const { row, col } = screenToGrid(e.clientX, e.clientY);
@@ -1905,6 +1909,154 @@ export function GridCanvas() {
                 >
                   {corridor.name}
                 </text>
+
+                {/* Resize handles — visible on hover */}
+                {hoveredCorridor === corridor.id && !isDrawingCorridor && !isDrawingZone && (() => {
+                  const handleSize = 8;
+                  const handleStyle = { fill: 'white', stroke: '#1F2937', strokeWidth: 2 };
+
+                  // Two endpoint handles along the corridor's main axis
+                  const handles = isHorizontal
+                    ? [
+                        // Left end
+                        { hx: x - handleSize / 2, hy: y + height / 2 - handleSize / 2, cursor: 'ew-resize', end: 'min' as const },
+                        // Right end
+                        { hx: x + width - handleSize / 2, hy: y + height / 2 - handleSize / 2, cursor: 'ew-resize', end: 'max' as const },
+                      ]
+                    : [
+                        // Top end
+                        { hx: x + width / 2 - handleSize / 2, hy: y - handleSize / 2, cursor: 'ns-resize', end: 'min' as const },
+                        // Bottom end
+                        { hx: x + width / 2 - handleSize / 2, hy: y + height - handleSize / 2, cursor: 'ns-resize', end: 'max' as const },
+                      ];
+
+                  return (
+                    <g>
+                      {handles.map((h, idx) => (
+                        <rect
+                          key={`ch-${idx}`}
+                          x={h.hx}
+                          y={h.hy}
+                          width={handleSize}
+                          height={handleSize}
+                          {...handleStyle}
+                          style={{ cursor: h.cursor }}
+                          onMouseEnter={() => setHoveredCorridor(corridor.id)}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            if (!canInteractWithZones()) return;
+                            if (!svgRef.current) return;
+
+                            const startGrid = screenToGrid(e.clientX, e.clientY);
+
+                            // Determine which grid coord this handle controls
+                            const edgeSvgVal = isHorizontal
+                              ? MARGIN + (h.end === 'min' ? minCol : maxCol + 1) * CELL_SIZE
+                              : MARGIN + (h.end === 'min' ? minRow : maxRow + 1) * CELL_SIZE;
+
+                            const offsetVal = isHorizontal
+                              ? startGrid.svgX - edgeSvgVal
+                              : startGrid.svgY - edgeSvgVal;
+
+                            // Snapshot original values so we can revert if needed
+                            const origStartX = corridor.start_grid_x;
+                            const origStartY = corridor.start_grid_y;
+                            const origEndX = corridor.end_grid_x;
+                            const origEndY = corridor.end_grid_y;
+
+                            // Track mutable copy
+                            const live = { start_grid_x: origStartX, start_grid_y: origStartY, end_grid_x: origEndX, end_grid_y: origEndY };
+
+                            const handleMouseMove = (moveEvent: MouseEvent) => {
+                              if (!svgRef.current) return;
+                              if (moveEvent.buttons === 0) { handleMouseUp(); return; }
+
+                              const moveGrid = screenToGrid(moveEvent.clientX, moveEvent.clientY);
+
+                              if (isHorizontal) {
+                                const adjustedX = moveGrid.svgX - offsetVal;
+                                let col = Math.round((adjustedX - MARGIN) / CELL_SIZE);
+
+                                if (h.end === 'min') {
+                                  // Dragging the left end — don't pass the other end
+                                  const otherCol = Math.max(origStartX, origEndX);
+                                  col = Math.max(0, Math.min(col, otherCol));
+                                  // Update whichever original point was the min
+                                  if (origStartX <= origEndX) {
+                                    live.start_grid_x = col;
+                                  } else {
+                                    live.end_grid_x = col;
+                                  }
+                                } else {
+                                  // Dragging the right end
+                                  const otherCol = Math.min(origStartX, origEndX);
+                                  col = Math.min(gridDimensions.cols - 1, Math.max(col - 1, otherCol));
+                                  if (origStartX >= origEndX) {
+                                    live.start_grid_x = col;
+                                  } else {
+                                    live.end_grid_x = col;
+                                  }
+                                }
+                              } else {
+                                const adjustedY = moveGrid.svgY - offsetVal;
+                                let row = Math.round((adjustedY - MARGIN) / CELL_SIZE);
+
+                                if (h.end === 'min') {
+                                  const otherRow = Math.max(origStartY, origEndY);
+                                  row = Math.max(0, Math.min(row, otherRow));
+                                  if (origStartY <= origEndY) {
+                                    live.start_grid_y = row;
+                                  } else {
+                                    live.end_grid_y = row;
+                                  }
+                                } else {
+                                  const otherRow = Math.min(origStartY, origEndY);
+                                  row = Math.min(gridDimensions.rows - 1, Math.max(row - 1, otherRow));
+                                  if (origStartY >= origEndY) {
+                                    live.start_grid_y = row;
+                                  } else {
+                                    live.end_grid_y = row;
+                                  }
+                                }
+                              }
+
+                              updateCorridor(corridor.id, { ...live });
+                            };
+
+                            const handleMouseUp = async () => {
+                              window.removeEventListener('mousemove', handleMouseMove);
+                              window.removeEventListener('mouseup', handleMouseUp);
+                              dragCleanupRef.current = null;
+
+                              // Persist the current state from the store
+                              const current = useGridStore.getState().corridors.find(c => c.id === corridor.id);
+                              if (current) {
+                                await supabase
+                                  .from('corridors')
+                                  .update({
+                                    start_grid_x: current.start_grid_x,
+                                    start_grid_y: current.start_grid_y,
+                                    end_grid_x: current.end_grid_x,
+                                    end_grid_y: current.end_grid_y,
+                                  })
+                                  .eq('id', corridor.id);
+                              }
+                            };
+
+                            dragCleanupRef.current = () => {
+                              window.removeEventListener('mousemove', handleMouseMove);
+                              window.removeEventListener('mouseup', handleMouseUp);
+                            };
+
+                            window.addEventListener('mousemove', handleMouseMove);
+                            window.addEventListener('mouseup', handleMouseUp);
+                          }}
+                        />
+                      ))}
+                    </g>
+                  );
+                })()}
               </g>
             );
           })}
