@@ -1905,12 +1905,25 @@ export function GridCanvas() {
                     <path d="M5 7.5 L8 13 L6 20 M11 7.5 L8 13 L10 20 M4 10 L8 9 L12 10" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                   </g>
                 ) : (
-                  /* Forklift silhouette */
-                  <g transform={`translate(${centerX - 12}, ${centerY - 10})`} className="pointer-events-none" opacity="0.7">
-                    <path d="M2 18 L2 6 L10 6 L10 2 L18 2 L18 4 L12 4 L12 8 L14 8 L14 18" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                    <circle cx="5" cy="18" r="2" fill={textColor} />
-                    <circle cx="14" cy="18" r="2" fill={textColor} />
-                    <path d="M18 2 L22 2 L22 8 L18 8" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  /* Forklift — cab with roll cage, mast, forks, wheels */
+                  <g transform={`translate(${centerX - 16}, ${centerY - 14})`} className="pointer-events-none" opacity="0.7">
+                    {/* Cab body */}
+                    <rect x="6" y="6" width="14" height="14" rx="2" fill={textColor} opacity="0.25" />
+                    <rect x="6" y="6" width="14" height="14" rx="2" stroke={textColor} strokeWidth="1.8" fill="none" />
+                    {/* Roll cage / roof */}
+                    <line x1="8" y1="6" x2="8" y2="2" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" />
+                    <line x1="18" y1="6" x2="18" y2="2" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" />
+                    <line x1="7" y1="2" x2="19" y2="2" stroke={textColor} strokeWidth="1.8" strokeLinecap="round" />
+                    {/* Mast (vertical bar in front) */}
+                    <line x1="24" y1="4" x2="24" y2="20" stroke={textColor} strokeWidth="2.2" strokeLinecap="round" />
+                    {/* Forks (two horizontal prongs) */}
+                    <line x1="24" y1="18" x2="32" y2="18" stroke={textColor} strokeWidth="2" strokeLinecap="round" />
+                    <line x1="24" y1="22" x2="32" y2="22" stroke={textColor} strokeWidth="2" strokeLinecap="round" />
+                    {/* Wheels */}
+                    <circle cx="9" cy="23" r="2.8" fill={textColor} />
+                    <circle cx="17" cy="23" r="2.8" fill={textColor} />
+                    {/* Steering wheel hint */}
+                    <circle cx="10" cy="13" r="1.5" stroke={textColor} strokeWidth="1.2" fill="none" />
                   </g>
                 )}
 
