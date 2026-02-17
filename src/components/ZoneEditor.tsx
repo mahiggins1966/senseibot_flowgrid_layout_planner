@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useGridStore } from '../store/gridStore';
 import { supabase } from '../lib/supabase';
-import { Trash2, X } from 'lucide-react';
-import { ZoneGroupType } from '../types';
+import { Trash2, X, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, EyeOff } from 'lucide-react';
+import { ZoneGroupType, LabelAlign } from '../types';
 
 export function ZoneEditor() {
   const { selectedZone, setSelectedZone, updateZone, deleteZone, canInteractWithZones } = useGridStore();
@@ -10,6 +10,7 @@ export function ZoneEditor() {
     name: selectedZone?.name || '',
     color: selectedZone?.color || '#3B82F6',
     group_type: selectedZone?.group_type || 'flexible',
+    label_align: (selectedZone?.label_align || 'center') as LabelAlign,
   });
 
   useEffect(() => {
@@ -18,6 +19,7 @@ export function ZoneEditor() {
         name: selectedZone.name,
         color: selectedZone.color,
         group_type: selectedZone.group_type,
+        label_align: selectedZone.label_align || 'center',
       });
     }
   }, [selectedZone]);
@@ -30,6 +32,7 @@ export function ZoneEditor() {
       name: formData.name,
       color: formData.color,
       group_type: formData.group_type as ZoneGroupType,
+      label_align: formData.label_align as LabelAlign,
     };
 
     const { error } = await supabase
@@ -141,6 +144,33 @@ export function ZoneEditor() {
               >
                 Flexible
               </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Label Position
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { value: 'top' as LabelAlign, label: 'Top', icon: AlignVerticalJustifyStart },
+                { value: 'center' as LabelAlign, label: 'Center', icon: AlignVerticalJustifyCenter },
+                { value: 'bottom' as LabelAlign, label: 'Bottom', icon: AlignVerticalJustifyEnd },
+                { value: 'hidden' as LabelAlign, label: 'Hide', icon: EyeOff },
+              ].map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setFormData({ ...formData, label_align: value })}
+                  className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    formData.label_align === value
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 

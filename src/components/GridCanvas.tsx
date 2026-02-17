@@ -555,6 +555,7 @@ export function GridCanvas() {
         grid_height: height,
         color: zoneColor,
         group_type: 'flexible',
+        label_align: 'center',
         activity_id: activityId,
         layout_id: zoneLayoutId,
       }])
@@ -1445,18 +1446,67 @@ export function GridCanvas() {
                     setOriginalPosition(null);
                   }}
                 />
-                <text
-                  x={MARGIN + zone.grid_x * CELL_SIZE + (zone.grid_width * CELL_SIZE) / 2}
-                  y={MARGIN + zone.grid_y * CELL_SIZE + (zone.grid_height * CELL_SIZE) / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="12"
-                  fontWeight="bold"
-                  fill={textColor}
-                  className="select-none pointer-events-none"
-                >
-                  {zone.name}
-                </text>
+                {/* Zone label — positioned by label_align, skipped if hidden */}
+                {(zone.label_align || 'center') !== 'hidden' && (() => {
+                  const zonePixelX = MARGIN + zone.grid_x * CELL_SIZE;
+                  const zonePixelY = MARGIN + zone.grid_y * CELL_SIZE;
+                  const zonePixelW = zone.grid_width * CELL_SIZE;
+                  const zonePixelH = zone.grid_height * CELL_SIZE;
+                  const labelX = zonePixelX + zonePixelW / 2;
+                  const align = zone.label_align || 'center';
+                  const labelY = align === 'top'
+                    ? zonePixelY + 12
+                    : align === 'bottom'
+                      ? zonePixelY + zonePixelH - 6
+                      : zonePixelY + zonePixelH / 2;
+                  const baseline = align === 'top' ? 'hanging' : align === 'bottom' ? 'auto' : 'middle';
+                  return (
+                    <text
+                      x={labelX}
+                      y={labelY}
+                      textAnchor="middle"
+                      dominantBaseline={baseline}
+                      fontSize="12"
+                      fontWeight="bold"
+                      fill={textColor}
+                      className="select-none pointer-events-none"
+                    >
+                      {zone.name}
+                    </text>
+                  );
+                })()}
+
+                {/* Hover tooltip — always shows name above zone */}
+                {hoveredZone === zone.id && !isDrawingZone && !draggingZone && (() => {
+                  const tooltipX = MARGIN + zone.grid_x * CELL_SIZE + (zone.grid_width * CELL_SIZE) / 2;
+                  const tooltipY = MARGIN + zone.grid_y * CELL_SIZE - 8;
+                  const textLen = zone.name.length * 6.5 + 16;
+                  return (
+                    <g className="pointer-events-none">
+                      <rect
+                        x={tooltipX - textLen / 2}
+                        y={tooltipY - 16}
+                        width={textLen}
+                        height={20}
+                        rx="4"
+                        fill="#1F2937"
+                        opacity="0.9"
+                      />
+                      <text
+                        x={tooltipX}
+                        y={tooltipY - 6}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize="11"
+                        fontWeight="600"
+                        fill="white"
+                        className="select-none"
+                      >
+                        {zone.name}
+                      </text>
+                    </g>
+                  );
+                })()}
 
                 {/* Distance label for glowing zones */}
                 {glowInfo && distance !== undefined && (

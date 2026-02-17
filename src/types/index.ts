@@ -96,6 +96,8 @@ export interface PlacedObject {
   created_at: string;
 }
 
+export type LabelAlign = 'top' | 'center' | 'bottom' | 'hidden';
+
 export interface Zone {
   id: string;
   name: string;
@@ -105,6 +107,7 @@ export interface Zone {
   grid_height: number;
   color: string;
   group_type: 'permanent' | 'semi-fixed' | 'flexible';
+  label_align: LabelAlign;
   activity_id?: string;
   created_at: string;
 }
