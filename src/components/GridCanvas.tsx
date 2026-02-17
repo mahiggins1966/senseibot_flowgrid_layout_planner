@@ -103,6 +103,7 @@ export function GridCanvas() {
   const [originalPosition, setOriginalPosition] = useState<{ x: number; y: number } | null>(null);
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
   const [hoveredCorridor, setHoveredCorridor] = useState<string | null>(null);
+  const [hoveredDoor, setHoveredDoor] = useState<string | null>(null);
   const [corridorPreviewEnd, setCorridorPreviewEnd] = useState<{ row: number; col: number } | null>(null);
 
   const dragCleanupRef = useRef<(() => void) | null>(null);
@@ -2244,6 +2245,16 @@ export function GridCanvas() {
 
             const doorColor = getDoorColor(door.type);
 
+            // Tooltip position — always above the door
+            const tooltipCenterX = (door.edge === 'top' || door.edge === 'bottom')
+              ? x + width / 2
+              : x + width / 2;
+            const tooltipAnchorY = (door.edge === 'top')
+              ? y - 8
+              : (door.edge === 'bottom')
+                ? y - 8
+                : y - 8;
+
             return (
               <g key={door.id}>
                 <rect
@@ -2256,6 +2267,8 @@ export function GridCanvas() {
                   strokeWidth="2"
                   opacity="0.7"
                   className="cursor-pointer"
+                  onMouseEnter={() => setHoveredDoor(door.id)}
+                  onMouseLeave={() => setHoveredDoor(null)}
                   onMouseMove={(e) => {
                     if (!svgRef.current) return;
                     const { row, col } = screenToGrid(e.clientX, e.clientY);
@@ -2265,18 +2278,35 @@ export function GridCanvas() {
                     }
                   }}
                 />
-                <text
-                  x={textX + labelOffsetX}
-                  y={textY + labelOffsetY}
-                  textAnchor={textAnchor}
-                  dominantBaseline="middle"
-                  fontSize="10"
-                  fontWeight="bold"
-                  fill={doorColor}
-                  className="select-none pointer-events-none"
-                >
-                  {door.name}
-                </text>
+                {/* Hover tooltip */}
+                {hoveredDoor === door.id && (() => {
+                  const textLen = door.name.length * 8.5 + 20;
+                  return (
+                    <g className="pointer-events-none">
+                      <rect
+                        x={tooltipCenterX - textLen / 2}
+                        y={tooltipAnchorY - 22}
+                        width={textLen}
+                        height={26}
+                        rx="5"
+                        fill="#1F2937"
+                        opacity="0.9"
+                      />
+                      <text
+                        x={tooltipCenterX}
+                        y={tooltipAnchorY - 9}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize="14"
+                        fontWeight="600"
+                        fill="white"
+                        className="select-none"
+                      >
+                        {door.name}
+                      </text>
+                    </g>
+                  );
+                })()}
               </g>
             );
           })}
