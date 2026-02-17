@@ -2341,9 +2341,9 @@ export function GridCanvas() {
               <text
                 key={`col-${i}`}
                 x={MARGIN + i * CELL_SIZE + CELL_SIZE / 2}
-                y={MARGIN - 10}
+                y={MARGIN - 12}
                 textAnchor="middle"
-                fontSize="10"
+                fontSize="14"
                 fill={isHighlighted ? '#1F2937' : '#9CA3AF'}
                 fontWeight={isHighlighted ? 'bold' : 'normal'}
                 className="select-none pointer-events-none transition-all"
@@ -2358,11 +2358,11 @@ export function GridCanvas() {
             return (
               <text
                 key={`row-${i}`}
-                x={MARGIN - 10}
+                x={MARGIN - 12}
                 y={MARGIN + i * CELL_SIZE + CELL_SIZE / 2}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontSize="10"
+                fontSize="14"
                 fill={isHighlighted ? '#1F2937' : '#9CA3AF'}
                 fontWeight={isHighlighted ? 'bold' : 'normal'}
                 className="select-none pointer-events-none transition-all"
