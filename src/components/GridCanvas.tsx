@@ -2353,31 +2353,42 @@ export function GridCanvas() {
 
             if (sequencedActivities.length < 2) return null;
 
-            // 2. Map each activity to its zone center(s)
-            const activityZoneCenters = sequencedActivities.map((act: any) => {
+            // 2. Group activities by sequence_order
+            const groupMap = new Map<number, Array<{ activity: any; x: number; y: number; zones: any[] }>>();
+            for (const act of sequencedActivities) {
               const actZones = zones.filter((z: any) => z.activity_id === act.id);
-              if (actZones.length === 0) return null;
-              // Average center of all zones for this activity
+              if (actZones.length === 0) continue;
               let cx = 0, cy = 0;
               for (const z of actZones) {
                 cx += MARGIN + z.grid_x * CELL_SIZE + (z.grid_width * CELL_SIZE) / 2;
                 cy += MARGIN + z.grid_y * CELL_SIZE + (z.grid_height * CELL_SIZE) / 2;
               }
-              return {
-                activity: act,
-                x: cx / actZones.length,
-                y: cy / actZones.length,
-                zones: actZones,
-              };
-            }).filter(Boolean) as Array<{ activity: any; x: number; y: number; zones: any[] }>;
-
-            if (activityZoneCenters.length < 2) return null;
-
-            // 3. Build flow segments
-            const segments: Array<{ from: typeof activityZoneCenters[0]; to: typeof activityZoneCenters[0]; index: number }> = [];
-            for (let i = 0; i < activityZoneCenters.length - 1; i++) {
-              segments.push({ from: activityZoneCenters[i], to: activityZoneCenters[i + 1], index: i });
+              const node = { activity: act, x: cx / actZones.length, y: cy / actZones.length, zones: actZones };
+              const seq = act.sequence_order as number;
+              if (!groupMap.has(seq)) groupMap.set(seq, []);
+              groupMap.get(seq)!.push(node);
             }
+
+            // 3. Build group centroids — one point per sequence step
+            const sortedSeqs = Array.from(groupMap.keys()).sort((a, b) => a - b);
+            const groupCentroids = sortedSeqs.map(seq => {
+              const nodes = groupMap.get(seq)!;
+              const allZones = nodes.flatMap(n => n.zones);
+              let cx = 0, cy = 0;
+              for (const n of nodes) { cx += n.x; cy += n.y; }
+              return { seq, x: cx / nodes.length, y: cy / nodes.length, nodes, allZones };
+            });
+
+            if (groupCentroids.length < 2) return null;
+
+            // 4. Build flow segments between group centroids
+            const segments: Array<{ from: typeof groupCentroids[0]; to: typeof groupCentroids[0] }> = [];
+            for (let i = 0; i < groupCentroids.length - 1; i++) {
+              segments.push({ from: groupCentroids[i], to: groupCentroids[i + 1] });
+            }
+
+            // Collect all individual zone nodes for badges
+            const allNodes = groupCentroids.flatMap(g => g.nodes);
 
             return (
               <g className="flow-overlay" style={{ pointerEvents: 'none' }}>
@@ -2401,33 +2412,21 @@ export function GridCanvas() {
                   `}</style>
                 </defs>
 
-                {/* Flow arrows — Bézier curves */}
+                {/* Flow arrows — Bézier curves between group centroids */}
                 {segments.map((seg, idx) => {
                   const dx = seg.to.x - seg.from.x;
                   const dy = seg.to.y - seg.from.y;
                   const dist = Math.sqrt(dx * dx + dy * dy);
-                  // Curve offset perpendicular to the line
                   const curvature = Math.min(dist * 0.25, 40);
-                  // Perpendicular direction
                   const nx = -dy / (dist || 1);
                   const ny = dx / (dist || 1);
                   const mx = (seg.from.x + seg.to.x) / 2 + nx * curvature;
                   const my = (seg.from.y + seg.to.y) / 2 + ny * curvature;
-
                   const pathD = `M ${seg.from.x} ${seg.from.y} Q ${mx} ${my} ${seg.to.x} ${seg.to.y}`;
 
                   return (
                     <g key={`flow-${idx}`}>
-                      {/* Shadow path for visibility */}
-                      <path
-                        d={pathD}
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="5"
-                        opacity="0.5"
-                        strokeLinecap="round"
-                      />
-                      {/* Animated flow line */}
+                      <path d={pathD} fill="none" stroke="white" strokeWidth="5" opacity="0.5" strokeLinecap="round" />
                       <path
                         d={pathD}
                         fill="none"
@@ -2443,8 +2442,8 @@ export function GridCanvas() {
                   );
                 })}
 
-                {/* Circled sequence numbers at each zone center */}
-                {activityZoneCenters.map((node, idx) => (
+                {/* Circled sequence numbers — one badge per zone */}
+                {allNodes.map((node, idx) => (
                   <g key={`seq-${idx}`}>
                     <circle
                       cx={node.x}
