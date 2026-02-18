@@ -2226,26 +2226,72 @@ export function GridCanvas() {
             const firstGroup = groupCentroids[0];
             const lastGroup = groupCentroids[groupCentroids.length - 1];
 
-            // 6. Build corridor graph for routing
+            // 6. Build corridor graph ONCE for all routing
             const graph = buildCorridorGraph(corridors);
             const hasCorridorGraph = graph.nodes.size > 0;
 
+            console.log('[Flow] Corridor graph:', graph.nodes.size, 'nodes,', graph.edges.length / 2, 'edges');
+            if (hasCorridorGraph) {
+              for (const [key, node] of graph.nodes) {
+                console.log('[Flow]   Node:', key, '→ grid col:', node.x, 'row:', node.y);
+              }
+            }
+
+            // Helper: convert pixel center back to grid col/row
+            const pxToGrid = (px: { x: number; y: number }) => ({
+              col: Math.floor((px.x - MARGIN) / CELL_SIZE),
+              row: Math.floor((px.y - MARGIN) / CELL_SIZE),
+            });
+
             // Helper: route a flow leg through corridors or fall back to Bézier
-            const routeLeg = (fromPx: { x: number; y: number }, toPx: { x: number; y: number }): string => {
+            const routeLeg = (fromPx: { x: number; y: number }, toPx: { x: number; y: number }, label?: string): string => {
               if (!hasCorridorGraph) {
+                console.log('[Flow]', label || '', '→ no corridor graph, using Bézier');
                 return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
               }
-              // Convert pixel positions to grid
-              const fromGridX = Math.round((fromPx.x - MARGIN) / CELL_SIZE - 0.5);
-              const fromGridY = Math.round((fromPx.y - MARGIN) / CELL_SIZE - 0.5);
-              const toGridX = Math.round((toPx.x - MARGIN) / CELL_SIZE - 0.5);
-              const toGridY = Math.round((toPx.y - MARGIN) / CELL_SIZE - 0.5);
 
-              const pixelPath = routeFlowLeg(fromGridX, fromGridY, toGridX, toGridY, corridors, CELL_SIZE, MARGIN);
-              if (pixelPath && pixelPath.length >= 2) {
-                return buildPolylinePath(pixelPath);
+              const fromGrid = pxToGrid(fromPx);
+              const toGrid = pxToGrid(toPx);
+
+              // Snap to nearest corridor nodes
+              const snapFrom = findNearestNode(graph, fromGrid.col, fromGrid.row);
+              const snapTo = findNearestNode(graph, toGrid.col, toGrid.row);
+
+              console.log('[Flow]', label || '', '→ from grid:', fromGrid, 'to grid:', toGrid,
+                'snapFrom:', snapFrom?.key, 'dist:', snapFrom?.distance,
+                'snapTo:', snapTo?.key, 'dist:', snapTo?.distance);
+
+              if (!snapFrom || !snapTo) {
+                console.log('[Flow]', label || '', '→ snap failed, using Bézier');
+                return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
               }
-              return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
+
+              // Don't route if snap distance is too far (> 20 squares)
+              if (snapFrom.distance > 20 || snapTo.distance > 20) {
+                console.log('[Flow]', label || '', '→ snap too far, using Bézier');
+                return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
+              }
+
+              const gridPath = findPath(graph, snapFrom.key, snapTo.key);
+              console.log('[Flow]', label || '', '→ path:', gridPath);
+
+              if (!gridPath || gridPath.length < 2) {
+                console.log('[Flow]', label || '', '→ no path found, using Bézier');
+                return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
+              }
+
+              // Build pixel polyline: source → corridor waypoints → destination
+              const pixelPath: Array<{ x: number; y: number }> = [fromPx];
+              for (const pt of gridPath) {
+                pixelPath.push({
+                  x: MARGIN + pt.x * CELL_SIZE + CELL_SIZE / 2,
+                  y: MARGIN + pt.y * CELL_SIZE + CELL_SIZE / 2,
+                });
+              }
+              pixelPath.push(toPx);
+
+              console.log('[Flow]', label || '', '→ ROUTED through', gridPath.length, 'corridor waypoints');
+              return buildPolylinePath(pixelPath);
             };
 
             // Helper: get door pixel center position
@@ -2263,21 +2309,22 @@ export function GridCanvas() {
             // Inbound: door → first sequence step
             for (const door of inboundDoors) {
               const dp = doorPixelCenter(door);
-              const pathD = routeLeg(dp, { x: firstGroup.x, y: firstGroup.y });
+              const pathD = routeLeg(dp, { x: firstGroup.x, y: firstGroup.y }, `INBOUND ${door.name} ${door.inbound_percentage}%`);
               const pct = door.inbound_percentage ?? 0;
               allFlowPaths.push({ pathD, type: 'inbound', label: `${pct}% in` });
             }
 
             // Process: step-to-step
-            for (const seg of processSegments) {
-              const pathD = routeLeg({ x: seg.from.x, y: seg.from.y }, { x: seg.to.x, y: seg.to.y });
+            for (let pi = 0; pi < processSegments.length; pi++) {
+              const seg = processSegments[pi];
+              const pathD = routeLeg({ x: seg.from.x, y: seg.from.y }, { x: seg.to.x, y: seg.to.y }, `PROCESS step ${seg.from.seq}→${seg.to.seq}`);
               allFlowPaths.push({ pathD, type: 'process' });
             }
 
             // Outbound: last sequence step → door
             for (const door of outboundDoors) {
               const dp = doorPixelCenter(door);
-              const pathD = routeLeg({ x: lastGroup.x, y: lastGroup.y }, dp);
+              const pathD = routeLeg({ x: lastGroup.x, y: lastGroup.y }, dp, `OUTBOUND ${door.name} ${door.outbound_percentage}%`);
               const pct = door.outbound_percentage ?? 0;
               allFlowPaths.push({ pathD, type: 'outbound', label: `${pct}% out` });
             }
