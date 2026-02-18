@@ -2307,27 +2307,12 @@ export function GridCanvas() {
             // Build all flow paths: inbound legs, process legs, outbound legs
             const allFlowPaths: Array<{ pathD: string; type: 'inbound' | 'process' | 'outbound'; label?: string }> = [];
 
-            // Inbound: door → first sequence step (route through corridors)
+            // Inbound only: door → first sequence step (route through corridors)
             for (const door of inboundDoors) {
               const dp = doorPixelCenter(door);
               const pathD = routeLeg(dp, { x: firstGroup.x, y: firstGroup.y }, `INBOUND ${door.name} ${door.inbound_percentage}%`);
               const pct = door.inbound_percentage ?? 0;
-              allFlowPaths.push({ pathD, type: 'inbound', label: `${pct}% in` });
-            }
-
-            // Process: step-to-step (always direct Bézier — zones are adjacent, no forklift corridor needed)
-            for (let pi = 0; pi < processSegments.length; pi++) {
-              const seg = processSegments[pi];
-              const pathD = buildBezierPath(seg.from.x, seg.from.y, seg.to.x, seg.to.y);
-              allFlowPaths.push({ pathD, type: 'process' });
-            }
-
-            // Outbound: last sequence step → door (route through corridors)
-            for (const door of outboundDoors) {
-              const dp = doorPixelCenter(door);
-              const pathD = routeLeg({ x: lastGroup.x, y: lastGroup.y }, dp, `OUTBOUND ${door.name} ${door.outbound_percentage}%`);
-              const pct = door.outbound_percentage ?? 0;
-              allFlowPaths.push({ pathD, type: 'outbound', label: `${pct}% out` });
+              allFlowPaths.push({ pathD, type: 'inbound', label: `${pct}%` });
             }
 
             // Collect all individual zone nodes for badges
