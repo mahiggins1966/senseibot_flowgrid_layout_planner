@@ -54,7 +54,7 @@ export function StepRouter({
   } = useGridStore();
 
   const [scoreData, setScoreData] = useState<LayoutScore | null>(null);
-  const [spaceMetrics, setSpaceMetrics] = useState<{ totalSpaceSqFt: number; availableSpaceSqFt: number }>({ totalSpaceSqFt: 0, availableSpaceSqFt: 0 });
+  const [spaceMetrics, setSpaceMetrics] = useState<{ totalSpaceSqFt: number; availableSpaceSqFt: number; materialTravelFt: number }>({ totalSpaceSqFt: 0, availableSpaceSqFt: 0, materialTravelFt: 0 });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [bestScore, setBestScore] = useState(0);
   const [expandedFactors, setExpandedFactors] = useState<Set<string>>(new Set());
@@ -117,9 +117,72 @@ export function StepRouter({
       const availableSquares = totalSquares - occupiedSquares;
       const availableSpaceSqFt = availableSquares * (settings.squareSize * settings.squareSize);
 
+      // Calculate material travel distance
+      const squareSizeFt = settings.squareSize;
+
+      // Helper: distance along a set of grid waypoints
+      const pathDistanceSquares = (points: Array<{ x: number; y: number }>) => {
+        let dist = 0;
+        for (let i = 0; i < points.length - 1; i++) {
+          dist += Math.abs(points[i + 1].x - points[i].x) + Math.abs(points[i + 1].y - points[i].y);
+        }
+        return dist;
+      };
+
+      // Inbound distances (weighted by percentage)
+      let weightedInboundSquares = 0;
+      const inboundDoors = doors.filter(d => d.has_inbound_material && d.inbound_flow_points && d.inbound_flow_points.length >= 2);
+      for (const door of inboundDoors) {
+        const dist = pathDistanceSquares(door.inbound_flow_points!);
+        const weight = (door.inbound_percentage ?? 0) / 100;
+        weightedInboundSquares += dist * weight;
+      }
+
+      // Process distances (zone centroid to zone centroid along sequence)
+      const sequencedActivities = activities
+        .filter(a => a.sequence_order != null && (a.sequence_order as number) > 0)
+        .sort((a, b) => ((a.sequence_order as number) || 0) - ((b.sequence_order as number) || 0));
+
+      // Group by sequence_order and compute centroids
+      const seqGroups = new Map<number, { cx: number; cy: number }>();
+      for (const act of sequencedActivities) {
+        const actZones = zones.filter(z => z.activity_id === act.id);
+        if (actZones.length === 0) continue;
+        const seq = act.sequence_order as number;
+        if (!seqGroups.has(seq)) {
+          let cx = 0, cy = 0;
+          for (const z of actZones) {
+            cx += z.grid_x + z.grid_width / 2;
+            cy += z.grid_y + z.grid_height / 2;
+          }
+          seqGroups.set(seq, { cx: cx / actZones.length, cy: cy / actZones.length });
+        }
+      }
+
+      const sortedSeqs = Array.from(seqGroups.keys()).sort((a, b) => a - b);
+      let processSquares = 0;
+      for (let i = 0; i < sortedSeqs.length - 1; i++) {
+        const from = seqGroups.get(sortedSeqs[i])!;
+        const to = seqGroups.get(sortedSeqs[i + 1])!;
+        processSquares += Math.sqrt(Math.pow(to.cx - from.cx, 2) + Math.pow(to.cy - from.cy, 2));
+      }
+
+      // Outbound distances (weighted by percentage)
+      let weightedOutboundSquares = 0;
+      const outboundDoors = doors.filter(d => d.has_outbound_material && d.outbound_flow_points && d.outbound_flow_points.length >= 2);
+      for (const door of outboundDoors) {
+        const dist = pathDistanceSquares(door.outbound_flow_points!);
+        const weight = (door.outbound_percentage ?? 0) / 100;
+        weightedOutboundSquares += dist * weight;
+      }
+
+      const totalTravelSquares = weightedInboundSquares + processSquares + weightedOutboundSquares;
+      const materialTravelFt = Math.round(totalTravelSquares * squareSizeFt);
+
       setSpaceMetrics({
         totalSpaceSqFt,
         availableSpaceSqFt,
+        materialTravelFt,
       });
     }
   }, [currentSubStep, zones, activities, settings, activityRelationships, volumeTiming, doors, corridors, paintedSquares, dismissedFlags, getGridDimensions, bestScore]);
@@ -503,6 +566,11 @@ export function StepRouter({
                   <div>
                     {spaceMetrics.availableSpaceSqFt.toLocaleString()} available
                   </div>
+                  {spaceMetrics.materialTravelFt > 0 && (
+                    <div style={{ color: '#2563eb', fontWeight: 500 }}>
+                      📦 {spaceMetrics.materialTravelFt.toLocaleString()} ft travel
+                    </div>
+                  )}
                 </div>
 
                 <div
