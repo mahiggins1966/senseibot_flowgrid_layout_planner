@@ -2307,12 +2307,19 @@ export function GridCanvas() {
             // Build all flow paths: inbound legs, process legs, outbound legs
             const allFlowPaths: Array<{ pathD: string; type: 'inbound' | 'process' | 'outbound'; label?: string }> = [];
 
-            // Inbound only: door → first sequence step (route through corridors)
+            // Inbound: door → first sequence step (route through corridors)
             for (const door of inboundDoors) {
               const dp = doorPixelCenter(door);
               const pathD = routeLeg(dp, { x: firstGroup.x, y: firstGroup.y }, `INBOUND ${door.name} ${door.inbound_percentage}%`);
               const pct = door.inbound_percentage ?? 0;
               allFlowPaths.push({ pathD, type: 'inbound', label: `${pct}%` });
+            }
+
+            // Process: step-to-step (direct Bézier between adjacent zones)
+            for (let pi = 0; pi < processSegments.length; pi++) {
+              const seg = processSegments[pi];
+              const pathD = buildBezierPath(seg.from.x, seg.from.y, seg.to.x, seg.to.y);
+              allFlowPaths.push({ pathD, type: 'process' });
             }
 
             // Collect all individual zone nodes for badges
