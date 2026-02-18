@@ -212,7 +212,7 @@ export function findPath(
     current = prev.get(current) ?? null;
   }
 
-  return path.length >= 2 ? path : null;
+  return path.length >= 1 ? path : null;
 }
 
 /**

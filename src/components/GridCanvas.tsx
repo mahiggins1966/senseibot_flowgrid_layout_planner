@@ -2275,7 +2275,7 @@ export function GridCanvas() {
               const gridPath = findPath(graph, snapFrom.key, snapTo.key);
               console.log('[Flow]', label || '', '→ path:', gridPath);
 
-              if (!gridPath || gridPath.length < 2) {
+              if (!gridPath || gridPath.length < 1) {
                 console.log('[Flow]', label || '', '→ no path found, using Bézier');
                 return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
               }
@@ -2306,7 +2306,7 @@ export function GridCanvas() {
             // Build all flow paths: inbound legs, process legs, outbound legs
             const allFlowPaths: Array<{ pathD: string; type: 'inbound' | 'process' | 'outbound'; label?: string }> = [];
 
-            // Inbound: door → first sequence step
+            // Inbound: door → first sequence step (route through corridors)
             for (const door of inboundDoors) {
               const dp = doorPixelCenter(door);
               const pathD = routeLeg(dp, { x: firstGroup.x, y: firstGroup.y }, `INBOUND ${door.name} ${door.inbound_percentage}%`);
@@ -2314,14 +2314,14 @@ export function GridCanvas() {
               allFlowPaths.push({ pathD, type: 'inbound', label: `${pct}% in` });
             }
 
-            // Process: step-to-step
+            // Process: step-to-step (always direct Bézier — zones are adjacent, no forklift corridor needed)
             for (let pi = 0; pi < processSegments.length; pi++) {
               const seg = processSegments[pi];
-              const pathD = routeLeg({ x: seg.from.x, y: seg.from.y }, { x: seg.to.x, y: seg.to.y }, `PROCESS step ${seg.from.seq}→${seg.to.seq}`);
+              const pathD = buildBezierPath(seg.from.x, seg.from.y, seg.to.x, seg.to.y);
               allFlowPaths.push({ pathD, type: 'process' });
             }
 
-            // Outbound: last sequence step → door
+            // Outbound: last sequence step → door (route through corridors)
             for (const door of outboundDoors) {
               const dp = doorPixelCenter(door);
               const pathD = routeLeg({ x: lastGroup.x, y: lastGroup.y }, dp, `OUTBOUND ${door.name} ${door.outbound_percentage}%`);
