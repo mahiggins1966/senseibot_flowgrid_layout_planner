@@ -39,6 +39,7 @@ interface GridStore {
   resizingZoneEdge: 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se' | null;
   isDrawingCorridor: boolean;
   corridorDrawStart: GridCoordinate | null;
+  corridorWaypoints: Array<{ row: number; col: number }>;
   selectedCorridorType: CorridorType | null;
   doorDrawStart: GridCoordinate | null;
   doorDrawEnd: GridCoordinate | null;
@@ -88,6 +89,8 @@ interface GridStore {
   setSelectedCorridor: (corridor: Corridor | null) => void;
   setIsDrawingCorridor: (isDrawing: boolean) => void;
   setCorridorDrawStart: (start: GridCoordinate | null) => void;
+  setCorridorWaypoints: (waypoints: Array<{ row: number; col: number }>) => void;
+  addCorridorWaypoint: (point: { row: number; col: number }) => void;
   setSelectedCorridorType: (type: CorridorType | null) => void;
   setIsDrawingZone: (isDrawing: boolean) => void;
   setZoneDrawStart: (start: GridCoordinate | null) => void;
@@ -191,6 +194,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
   resizingZoneEdge: null,
   isDrawingCorridor: false,
   corridorDrawStart: null,
+  corridorWaypoints: [],
   selectedCorridorType: null,
   doorDrawStart: null,
   doorDrawEnd: null,
@@ -370,6 +374,10 @@ export const useGridStore = create<GridStore>((set, get) => ({
   setIsDrawingCorridor: (isDrawing) => set({ isDrawingCorridor: isDrawing }),
 
   setCorridorDrawStart: (start) => set({ corridorDrawStart: start }),
+
+  setCorridorWaypoints: (waypoints) => set({ corridorWaypoints: waypoints }),
+
+  addCorridorWaypoint: (point) => set((state) => ({ corridorWaypoints: [...state.corridorWaypoints, point] })),
 
   setSelectedCorridorType: (type) => set({ selectedCorridorType: type }),
 

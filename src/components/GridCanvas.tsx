@@ -84,6 +84,9 @@ export function GridCanvas() {
     setIsDrawingCorridor,
     corridorDrawStart,
     setCorridorDrawStart,
+    corridorWaypoints,
+    addCorridorWaypoint,
+    setCorridorWaypoints,
     selectedCorridorType,
     setSelectedCorridorType,
     hoveredSquare,
@@ -220,7 +223,11 @@ export function GridCanvas() {
   }, [activeLayoutId]);
 
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && isDrawingCorridor && corridorWaypoints.length >= 2 && selectedCorridorType) {
+        createCorridorFromWaypoints(corridorWaypoints, selectedCorridorType);
+        return;
+      }
       if (e.key === 'Escape') {
         if (dragCleanupRef.current) {
           dragCleanupRef.current();
@@ -229,6 +236,7 @@ export function GridCanvas() {
         if (isDrawingCorridor) {
           setIsDrawingCorridor(false);
           setCorridorDrawStart(null);
+          setCorridorWaypoints([]);
           setSelectedCorridorType(null);
         }
         if (isDrawingZone) {
@@ -269,9 +277,9 @@ export function GridCanvas() {
       }
     };
 
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isDrawingZone, paintMode, isAddingDoor, isDraggingObject, isDrawingCorridor, setIsDrawingZone, setPaintMode, setSelectedActivityForZone, setIsAddingDoor, setDoorDrawStart, setDoorDrawEnd, setIsDrawingCorridor, setCorridorDrawStart, setSelectedCorridorType, draggingZone, setDraggingZone, resizingZone, setResizingZone, setDragOffset, holdTimer]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawingZone, paintMode, isAddingDoor, isDraggingObject, isDrawingCorridor, corridorWaypoints, selectedCorridorType, setIsDrawingZone, setPaintMode, setSelectedActivityForZone, setIsAddingDoor, setDoorDrawStart, setDoorDrawEnd, setIsDrawingCorridor, setCorridorDrawStart, setCorridorWaypoints, setSelectedCorridorType, draggingZone, setDraggingZone, resizingZone, setResizingZone, setDragOffset, holdTimer]);
 
 
   const loadData = async () => {
@@ -294,7 +302,14 @@ export function GridCanvas() {
       setDoors(doorsResult.data as Door[]);
     }
     if (corridorsResult.data) {
-      setCorridors(corridorsResult.data as Corridor[]);
+      // Auto-migrate: add points array from start/end for legacy corridors
+      const migratedCorridors = (corridorsResult.data as Corridor[]).map(c => {
+        if (!c.points || c.points.length === 0) {
+          return { ...c, points: [{ x: c.start_grid_x, y: c.start_grid_y }, { x: c.end_grid_x, y: c.end_grid_y }] };
+        }
+        return c;
+      });
+      setCorridors(migratedCorridors);
     }
     if (paintedResult.data) {
       const paintedMap = new Map();
@@ -408,16 +423,34 @@ export function GridCanvas() {
 
     setIsMouseDown(true);
 
-    // CORRIDOR HANDLING - MUST BE FIRST
+    // CORRIDOR HANDLING - MULTI-POINT WAYPOINT DRAWING
     if (isDrawingCorridor && selectedCorridorType) {
       if (!canInteractWithZones()) return;
 
-      if (!corridorDrawStart) {
+      const waypoints = useGridStore.getState().corridorWaypoints;
+
+      if (waypoints.length === 0) {
+        // First click — place first waypoint
+        addCorridorWaypoint({ row, col });
         setCorridorDrawStart({ row, col, label: getGridCoordinate(row, col).label });
       } else {
-        if (previewCorridor && previewCorridor.isValid) {
-          createCorridor(corridorDrawStart, { row, col, label: getGridCoordinate(row, col).label }, selectedCorridorType);
+        // Subsequent click — snap to H/V from previous waypoint
+        const prev = waypoints[waypoints.length - 1];
+        const deltaX = Math.abs(col - prev.col);
+        const deltaY = Math.abs(row - prev.row);
+        const snappedRow = deltaX >= deltaY ? prev.row : row;
+        const snappedCol = deltaX >= deltaY ? col : prev.col;
+
+        // Double-click finishes the corridor (even if snapped pos matches last point)
+        if (e.detail >= 2 && waypoints.length >= 2) {
+          createCorridorFromWaypoints(waypoints, selectedCorridorType);
+          return;
         }
+
+        // Skip if same as previous point
+        if (snappedRow === prev.row && snappedCol === prev.col) return;
+
+        addCorridorWaypoint({ row: snappedRow, col: snappedCol });
       }
       return;
     }
@@ -457,17 +490,8 @@ export function GridCanvas() {
 
     setIsMouseDown(false);
 
-    // CORRIDOR: support click-drag (create on mouseUp if start was set during this drag)
-    if (isDrawingCorridor && selectedCorridorType && corridorDrawStart) {
-      if (!canInteractWithZones()) return;
-      // Only create if the user actually dragged to a different square
-      if (row !== corridorDrawStart.row || col !== corridorDrawStart.col) {
-        if (previewCorridor && previewCorridor.isValid) {
-          createCorridor(corridorDrawStart, { row, col, label: getGridCoordinate(row, col).label }, selectedCorridorType);
-        }
-      }
-      return;
-    }
+    // CORRIDOR: during waypoint drawing, mouseUp is a no-op (clicks handled in mouseDown)
+    if (isDrawingCorridor) return;
 
     if (isAddingDoor && doorDrawStart) {
       if (!canInteractWithDoors()) return;
@@ -482,10 +506,15 @@ export function GridCanvas() {
     }
   };
 
-  const createCorridor = async (start: GridCoordinate, end: GridCoordinate, type: 'pedestrian' | 'forklift') => {
+  const createCorridorFromWaypoints = async (waypoints: Array<{ row: number; col: number }>, type: 'pedestrian' | 'forklift') => {
+    if (waypoints.length < 2) return;
+
     const width = type === 'pedestrian' ? 1 : 2;
     const color = getCorridorColor(type);
     const defaultName = `Corridor ${corridors.length + 1}`;
+    const points = waypoints.map(wp => ({ x: wp.col, y: wp.row }));
+    const first = waypoints[0];
+    const last = waypoints[waypoints.length - 1];
 
     const { activeLayoutId: lid } = useGridStore.getState();
     const { data, error } = await supabase
@@ -493,42 +522,41 @@ export function GridCanvas() {
       .insert({
         name: defaultName,
         type,
-        start_grid_x: start.col,
-        start_grid_y: start.row,
-        end_grid_x: end.col,
-        end_grid_y: end.row,
+        start_grid_x: first.col,
+        start_grid_y: first.row,
+        end_grid_x: last.col,
+        end_grid_y: last.row,
         width,
         color,
         layout_id: lid,
+        points,
       })
       .select()
       .maybeSingle();
 
     if (error) {
       console.error('Error creating corridor:', error);
-
-      // Fallback: Add to local state even if database fails
       const fallbackCorridor: Corridor = {
         id: `temp-${Date.now()}`,
         name: defaultName,
         type,
-        start_grid_x: start.col,
-        start_grid_y: start.row,
-        end_grid_x: end.col,
-        end_grid_y: end.row,
+        start_grid_x: first.col,
+        start_grid_y: first.row,
+        end_grid_x: last.col,
+        end_grid_y: last.row,
         width,
         color,
         created_at: new Date().toISOString(),
+        points,
       };
       addCorridor(fallbackCorridor);
-      setCorridorDrawStart(null);
-      return;
+    } else if (data) {
+      addCorridor(data as Corridor);
     }
 
-    if (data) {
-      addCorridor(data as Corridor);
-      setCorridorDrawStart(null);
-    }
+    // Reset drawing state but stay in drawing mode for next corridor
+    setCorridorDrawStart(null);
+    setCorridorWaypoints([]);
   };
 
   const createZone = async (clickPosition: GridCoordinate) => {
@@ -1032,113 +1060,40 @@ export function GridCanvas() {
     };
   }, [isDrawingZone, hoveredSquare, zoneDrawWidth, zoneDrawHeight, gridDimensions, paintedSquares, selectedActivityForZone, activities]);
 
-  const previewCorridor = useMemo(() => {
-    if (!isDrawingCorridor || !corridorDrawStart || !hoveredSquare || !selectedCorridorType) return null;
+  // Helper: compute a rect for a single corridor segment between two points
+  const computeSegmentRect = (p1: { row: number; col: number }, p2: { row: number; col: number }, corridorWidth: number) => {
+    const isH = p1.row === p2.row;
+    const minCol = Math.min(p1.col, p2.col);
+    const maxCol = Math.max(p1.col, p2.col);
+    const minRow = Math.min(p1.row, p2.row);
+    const maxRow = Math.max(p1.row, p2.row);
+    return {
+      x: MARGIN + minCol * CELL_SIZE,
+      y: MARGIN + minRow * CELL_SIZE,
+      w: isH ? (maxCol - minCol + 1) * CELL_SIZE : corridorWidth * CELL_SIZE,
+      h: isH ? corridorWidth * CELL_SIZE : (maxRow - minRow + 1) * CELL_SIZE,
+    };
+  };
 
-    const startCol = corridorDrawStart.col;
-    const startRow = corridorDrawStart.row;
-    const endCol = hoveredSquare.col;
-    const endRow = hoveredSquare.row;
+  // Preview: next segment from last waypoint to snapped cursor
+  const previewCorridorSegment = useMemo(() => {
+    if (!isDrawingCorridor || !hoveredSquare || !selectedCorridorType || corridorWaypoints.length === 0) return null;
 
-    const deltaX = Math.abs(endCol - startCol);
-    const deltaY = Math.abs(endRow - startRow);
+    const prev = corridorWaypoints[corridorWaypoints.length - 1];
+    const deltaX = Math.abs(hoveredSquare.col - prev.col);
+    const deltaY = Math.abs(hoveredSquare.row - prev.row);
+    const snappedRow = deltaX >= deltaY ? prev.row : hoveredSquare.row;
+    const snappedCol = deltaX >= deltaY ? hoveredSquare.col : prev.col;
 
-    let isHorizontal = deltaX > deltaY;
-    let actualEndCol = endCol;
-    let actualEndRow = endRow;
+    if (snappedRow === prev.row && snappedCol === prev.col) return null;
 
-    if (isHorizontal) {
-      actualEndRow = startRow;
-    } else {
-      actualEndCol = startCol;
-    }
-
-    const minCol = Math.min(startCol, actualEndCol);
-    const maxCol = Math.max(startCol, actualEndCol);
-    const minRow = Math.min(startRow, actualEndRow);
-    const maxRow = Math.max(startRow, actualEndRow);
-
-    const width = selectedCorridorType === 'pedestrian' ? 1 : 2;
+    const corridorWidth = selectedCorridorType === 'pedestrian' ? 1 : 2;
+    const rect = computeSegmentRect(prev, { row: snappedRow, col: snappedCol }, corridorWidth);
     const fillColor = getCorridorColor(selectedCorridorType);
     const strokeColor = getCorridorBorderColor(selectedCorridorType);
 
-    let isValid = true;
-    let invalidReason = '';
-
-    if (isHorizontal) {
-      if (maxCol >= gridDimensions.cols || minRow + width > gridDimensions.rows) {
-        isValid = false;
-        invalidReason = 'Corridor extends beyond grid boundaries';
-      }
-    } else {
-      if (maxRow >= gridDimensions.rows || minCol + width > gridDimensions.cols) {
-        isValid = false;
-        invalidReason = 'Corridor extends beyond grid boundaries';
-      }
-    }
-
-    if (isValid) {
-      if (isHorizontal) {
-        for (let c = minCol; c <= maxCol; c++) {
-          for (let r = minRow; r < minRow + width; r++) {
-            const key = `${r}-${c}`;
-            const painted = paintedSquares.get(key);
-            if (painted && painted.type === 'permanent') {
-              isValid = false;
-              invalidReason = 'Cannot cross permanent (dark gray) squares';
-              break;
-            }
-          }
-          if (!isValid) break;
-        }
-      } else {
-        for (let r = minRow; r <= maxRow; r++) {
-          for (let c = minCol; c < minCol + width; c++) {
-            const key = `${r}-${c}`;
-            const painted = paintedSquares.get(key);
-            if (painted && painted.type === 'permanent') {
-              isValid = false;
-              invalidReason = 'Cannot cross permanent (dark gray) squares';
-              break;
-            }
-          }
-          if (!isValid) break;
-        }
-      }
-    }
-
-    if (isHorizontal) {
-      return {
-        x: MARGIN + minCol * CELL_SIZE,
-        y: MARGIN + minRow * CELL_SIZE,
-        width: (maxCol - minCol + 1) * CELL_SIZE,
-        height: width * CELL_SIZE,
-        fillColor: isValid ? fillColor : '#EF4444',
-        strokeColor: isValid ? strokeColor : '#DC2626',
-        isValid,
-        invalidReason,
-        startCol: minCol,
-        startRow: minRow,
-        endCol: maxCol,
-        endRow: minRow,
-      };
-    } else {
-      return {
-        x: MARGIN + minCol * CELL_SIZE,
-        y: MARGIN + minRow * CELL_SIZE,
-        width: width * CELL_SIZE,
-        height: (maxRow - minRow + 1) * CELL_SIZE,
-        fillColor: isValid ? fillColor : '#EF4444',
-        strokeColor: isValid ? strokeColor : '#DC2626',
-        isValid,
-        invalidReason,
-        startCol: minCol,
-        startRow: minRow,
-        endCol: minCol,
-        endRow: maxRow,
-      };
-    }
-  }, [isDrawingCorridor, corridorDrawStart, hoveredSquare, selectedCorridorType, gridDimensions, paintedSquares]);
+    return { ...rect, fillColor, strokeColor, isValid: true };
+  }, [isDrawingCorridor, hoveredSquare, selectedCorridorType, corridorWaypoints]);
 
   return (
     <div
@@ -1171,7 +1126,9 @@ export function GridCanvas() {
           <span>
             <strong>{selectedCorridorType === 'pedestrian' ? 'Pedestrian Walkway' : 'Forklift / Cart Path'}</strong>
             {' — '}
-            {!corridorDrawStart ? 'click start point' : 'click end point'}
+            {corridorWaypoints.length === 0
+              ? 'click to place start point'
+              : `${corridorWaypoints.length} point${corridorWaypoints.length > 1 ? 's' : ''} · click to add bend · double-click or Enter to finish`}
             {' · Esc to cancel'}
           </span>
         </div>
@@ -1957,20 +1914,40 @@ export function GridCanvas() {
           })}
 
           {corridors.map((corridor) => {
-            const minCol = Math.min(corridor.start_grid_x, corridor.end_grid_x);
-            const maxCol = Math.max(corridor.start_grid_x, corridor.end_grid_x);
-            const minRow = Math.min(corridor.start_grid_y, corridor.end_grid_y);
-            const maxRow = Math.max(corridor.start_grid_y, corridor.end_grid_y);
+            // Use points array (guaranteed by auto-migration on load)
+            const pts = corridor.points && corridor.points.length >= 2
+              ? corridor.points
+              : [{ x: corridor.start_grid_x, y: corridor.start_grid_y }, { x: corridor.end_grid_x, y: corridor.end_grid_y }];
 
-            const isHorizontal = corridor.start_grid_y === corridor.end_grid_y;
+            // Build segments
+            const segments: Array<{ x: number; y: number; w: number; h: number; isH: boolean }> = [];
+            for (let si = 0; si < pts.length - 1; si++) {
+              const p1 = { row: pts[si].y, col: pts[si].x };
+              const p2 = { row: pts[si + 1].y, col: pts[si + 1].x };
+              const isH = p1.row === p2.row;
+              const minC = Math.min(p1.col, p2.col);
+              const maxC = Math.max(p1.col, p2.col);
+              const minR = Math.min(p1.row, p2.row);
+              const maxR = Math.max(p1.row, p2.row);
+              segments.push({
+                x: MARGIN + minC * CELL_SIZE,
+                y: MARGIN + minR * CELL_SIZE,
+                w: isH ? (maxC - minC + 1) * CELL_SIZE : corridor.width * CELL_SIZE,
+                h: isH ? corridor.width * CELL_SIZE : (maxR - minR + 1) * CELL_SIZE,
+                isH,
+              });
+            }
 
-            const x = MARGIN + minCol * CELL_SIZE;
-            const y = MARGIN + minRow * CELL_SIZE;
-            const width = isHorizontal ? (maxCol - minCol + 1) * CELL_SIZE : corridor.width * CELL_SIZE;
-            const height = isHorizontal ? corridor.width * CELL_SIZE : (maxRow - minRow + 1) * CELL_SIZE;
-
-            const centerX = x + width / 2;
-            const centerY = y + height / 2;
+            // Find longest segment for icon placement
+            let longestIdx = 0;
+            let longestLen = 0;
+            segments.forEach((seg, si) => {
+              const len = Math.max(seg.w, seg.h);
+              if (len > longestLen) { longestLen = len; longestIdx = si; }
+            });
+            const iconSeg = segments[longestIdx] || segments[0];
+            const centerX = iconSeg.x + iconSeg.w / 2;
+            const centerY = iconSeg.y + iconSeg.h / 2;
 
             const fillColor = getCorridorColor(corridor.type);
             const strokeColor = getCorridorBorderColor(corridor.type);
@@ -1986,27 +1963,30 @@ export function GridCanvas() {
                 }
                 setSelectedCorridor(corridor);
               }} style={{ pointerEvents: isDrawingCorridor ? 'none' : 'auto' }}>
-                <rect
-                  x={x}
-                  y={y}
-                  width={width}
-                  height={height}
-                  fill={fillColor}
-                  stroke={strokeColor}
-                  strokeWidth="2"
-                  opacity="0.5"
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHoveredCorridor(corridor.id)}
-                  onMouseLeave={() => setHoveredCorridor(null)}
-                  onMouseMove={(e) => {
-                    if (!svgRef.current) return;
-                    const { row, col } = screenToGrid(e.clientX, e.clientY);
-                    if (col >= 0 && row >= 0 && col < gridDimensions.cols && row < gridDimensions.rows) {
-                      const coordinate = getGridCoordinate(row, col);
-                      setHoveredSquare({ row, col, label: coordinate.label });
-                    }
-                  }}
-                />
+                  {segments.map((seg, si) => (
+                  <rect
+                    key={`seg-${si}`}
+                    x={seg.x}
+                    y={seg.y}
+                    width={seg.w}
+                    height={seg.h}
+                    fill={fillColor}
+                    stroke={strokeColor}
+                    strokeWidth="2"
+                    opacity="0.5"
+                    className="cursor-pointer"
+                    onMouseEnter={() => setHoveredCorridor(corridor.id)}
+                    onMouseLeave={() => setHoveredCorridor(null)}
+                    onMouseMove={(e) => {
+                      if (!svgRef.current) return;
+                      const { row, col } = screenToGrid(e.clientX, e.clientY);
+                      if (col >= 0 && row >= 0 && col < gridDimensions.cols && row < gridDimensions.rows) {
+                        const coordinate = getGridCoordinate(row, col);
+                        setHoveredSquare({ row, col, label: coordinate.label });
+                      }
+                    }}
+                  />
+                ))}
                 {/* Icon instead of text label */}
                 {corridor.type === 'pedestrian' ? (
                   /* Walking person silhouette */
@@ -2037,8 +2017,8 @@ export function GridCanvas() {
                   </g>
                 )}
 
-                {/* Resize handles — visible on hover */}
-                {hoveredCorridor === corridor.id && !isDrawingCorridor && !isDrawingZone && (() => {
+                {/* Resize handles removed — multi-point corridors can be deleted and redrawn */}
+                {false && (() => {
                   const handleSize = 8;
                   const handleStyle = { fill: 'white', stroke: '#1F2937', strokeWidth: 2 };
 
@@ -2188,35 +2168,47 @@ export function GridCanvas() {
             );
           })}
 
-          {previewCorridor && (
-            <>
-              <rect
-                x={previewCorridor.x}
-                y={previewCorridor.y}
-                width={previewCorridor.width}
-                height={previewCorridor.height}
-                fill={previewCorridor.fillColor}
-                stroke={previewCorridor.strokeColor}
-                strokeWidth="3"
-                opacity={previewCorridor.isValid ? 0.6 : 0.4}
-                className="pointer-events-none"
-              />
-              {!previewCorridor.isValid && previewCorridor.invalidReason && (
-                <text
-                  x={previewCorridor.x + previewCorridor.width / 2}
-                  y={previewCorridor.y + previewCorridor.height / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill="#DC2626"
-                  fontSize="14"
-                  fontWeight="bold"
-                  className="pointer-events-none"
-                >
-                  ✗ INVALID
-                </text>
-              )}
-            </>
+          {/* In-progress waypoint segments (confirmed clicks) */}
+          {isDrawingCorridor && corridorWaypoints.length >= 2 && selectedCorridorType && (() => {
+            const cw = selectedCorridorType === 'pedestrian' ? 1 : 2;
+            const fc = getCorridorColor(selectedCorridorType);
+            const sc = getCorridorBorderColor(selectedCorridorType);
+            return corridorWaypoints.slice(0, -1).map((wp, wi) => {
+              const next = corridorWaypoints[wi + 1];
+              const rect = computeSegmentRect(wp, next, cw);
+              return <rect key={`wp-${wi}`} x={rect.x} y={rect.y} width={rect.w} height={rect.h} fill={fc} stroke={sc} strokeWidth="3" opacity="0.6" className="pointer-events-none" />;
+            });
+          })()}
+
+          {/* Preview segment from last waypoint to cursor */}
+          {previewCorridorSegment && (
+            <rect
+              x={previewCorridorSegment.x}
+              y={previewCorridorSegment.y}
+              width={previewCorridorSegment.w}
+              height={previewCorridorSegment.h}
+              fill={previewCorridorSegment.fillColor}
+              stroke={previewCorridorSegment.strokeColor}
+              strokeWidth="3"
+              strokeDasharray="6,4"
+              opacity="0.5"
+              className="pointer-events-none"
+            />
           )}
+
+          {/* Waypoint dots */}
+          {isDrawingCorridor && corridorWaypoints.map((wp, wi) => (
+            <circle
+              key={`dot-${wi}`}
+              cx={MARGIN + wp.col * CELL_SIZE + CELL_SIZE / 2}
+              cy={MARGIN + wp.row * CELL_SIZE + CELL_SIZE / 2}
+              r="4"
+              fill="white"
+              stroke="#1F2937"
+              strokeWidth="2"
+              className="pointer-events-none"
+            />
+          ))}
 
           {doorDrawStart && doorDrawEnd && (
             (() => {

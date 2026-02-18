@@ -10,6 +10,7 @@ export default function CorridorDrawingPanel() {
     setIsDrawingCorridor,
     setSelectedCorridorType,
     setCorridorDrawStart,
+    setCorridorWaypoints,
     corridors,
     deleteCorridor,
     setSelectedCorridor,
@@ -44,10 +45,12 @@ export default function CorridorDrawingPanel() {
       setIsDrawingCorridor(false);
       setSelectedCorridorType(null);
       setCorridorDrawStart(null);
+      setCorridorWaypoints([]);
     } else {
       setIsDrawingCorridor(true);
       setSelectedCorridorType('pedestrian');
       setCorridorDrawStart(null);
+      setCorridorWaypoints([]);
     }
   };
 
@@ -56,10 +59,12 @@ export default function CorridorDrawingPanel() {
       setIsDrawingCorridor(false);
       setSelectedCorridorType(null);
       setCorridorDrawStart(null);
+      setCorridorWaypoints([]);
     } else {
       setIsDrawingCorridor(true);
       setSelectedCorridorType('forklift');
       setCorridorDrawStart(null);
+      setCorridorWaypoints([]);
     }
   };
 
@@ -108,10 +113,16 @@ export default function CorridorDrawingPanel() {
   };
 
   const calculateCorridorLength = (corridor: typeof corridors[0]) => {
-    const deltaX = Math.abs(corridor.end_grid_x - corridor.start_grid_x);
-    const deltaY = Math.abs(corridor.end_grid_y - corridor.start_grid_y);
-    const length = Math.max(deltaX, deltaY) + 1;
-    return length * settings.squareSize;
+    const pts = corridor.points && corridor.points.length >= 2
+      ? corridor.points
+      : [{ x: corridor.start_grid_x, y: corridor.start_grid_y }, { x: corridor.end_grid_x, y: corridor.end_grid_y }];
+    let totalSquares = 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const dx = Math.abs(pts[i + 1].x - pts[i].x);
+      const dy = Math.abs(pts[i + 1].y - pts[i].y);
+      totalSquares += Math.max(dx, dy) + (i === 0 ? 1 : 0);
+    }
+    return totalSquares * settings.squareSize;
   };
 
   const pedestrianCorridors = corridors.filter(c => c.type === 'pedestrian');
@@ -131,6 +142,7 @@ export default function CorridorDrawingPanel() {
     setIsDrawingCorridor(false);
     setSelectedCorridorType(null);
     setCorridorDrawStart(null);
+    setCorridorWaypoints([]);
   };
 
   return (
@@ -196,7 +208,7 @@ export default function CorridorDrawingPanel() {
       )}
 
       <p style={{ fontSize: '13px', color: '#666', marginTop: '8px', marginBottom: '16px' }}>
-        Click a button then click two points on the grid to draw a straight corridor. Press Escape to cancel.
+        Click a button, then click on the grid to place waypoints. Add bends by clicking corners. Double-click or press Enter to finish. Press Escape to cancel.
       </p>
 
       {corridors.length > 0 && (

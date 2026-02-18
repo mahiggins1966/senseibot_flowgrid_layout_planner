@@ -201,6 +201,11 @@ export interface ActivityRelationship {
 
 export type CorridorType = 'pedestrian' | 'forklift';
 
+export interface CorridorPoint {
+  x: number;
+  y: number;
+}
+
 export interface Corridor {
   id: string;
   name: string;
@@ -212,6 +217,7 @@ export interface Corridor {
   width: number;
   color: string;
   created_at: string;
+  points?: CorridorPoint[];
 }
 
 export type CellType = 'pedestrian' | 'equipment' | 'staging' | 'work' | 'obstacle' | 'door' | 'empty';
