@@ -4,7 +4,7 @@ import { ActivityZoneDrawer } from '../ActivityZoneDrawer';
 import { ActivityZonePopup } from '../ActivityZonePopup';
 import { ScoringPanel } from '../ScoringPanel';
 import { CorridorDrawer } from '../CorridorDrawer';
-import { FlowPathDrawer } from '../FlowPathDrawer';
+
 import { CorridorPopup } from '../CorridorPopup';
 import { useGridStore } from '../../store/gridStore';
 import { Eye, EyeOff } from 'lucide-react';
@@ -41,7 +41,6 @@ export function Step2FBuildLayout({ onComplete }: Step2FBuildLayoutProps) {
             <ActivityZoneDrawer />
             <ObjectLibrary />
             <CorridorDrawer />
-            <FlowPathDrawer />
           </div>
 
           <div className="pt-4 border-t border-gray-200">
