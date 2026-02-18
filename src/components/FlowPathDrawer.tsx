@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Route, RotateCcw } from 'lucide-react';
 import { useGridStore } from '../store/gridStore';
 import { supabase } from '../lib/supabase';
@@ -21,6 +21,24 @@ export function FlowPathDrawer() {
   } = useGridStore();
 
   const [isOpen, setIsOpen] = useState(true);
+
+  // Ensure doors are loaded (they may not be if user navigated directly to layout step)
+  useEffect(() => {
+    const loadDoors = async () => {
+      const { activeProjectId } = useGridStore.getState();
+      const { data, error } = await supabase
+        .from('doors')
+        .select('*')
+        .eq('project_id', activeProjectId)
+        .order('created_at', { ascending: true });
+      if (!error && data) {
+        useGridStore.getState().setDoors(data as Door[]);
+      }
+    };
+    if (doors.length === 0) {
+      loadDoors();
+    }
+  }, []);
 
   const materialDoors = doors.filter(d => d.has_inbound_material || d.has_outbound_material);
   const inboundDoors = materialDoors.filter(d => d.has_inbound_material);
@@ -51,8 +69,6 @@ export function FlowPathDrawer() {
       updateDoor(door.id, { [field]: null } as any);
     }
   };
-
-  if (materialDoors.length === 0) return null;
 
   const totalPaths = inboundDoors.length + outboundDoors.length;
   const drawnPaths = inboundDoors.filter(d => d.inbound_flow_points).length +
