@@ -5,6 +5,7 @@ import { getGridCoordinate, getRowLabel, getColumnLabel } from '../utils/coordin
 import { supabase } from '../lib/supabase';
 import { Zone, PlacedObject, GridCoordinate, Door, DoorType, Corridor } from '../types';
 import { getActivityColor, getActivityBorderColor, getCorridorColor, getCorridorBorderColor, OSHA_COLORS } from '../utils/oshaColors';
+import { buildCorridorGraph, findNearestNode, findPath, routeFlowLeg, getDoorGridCenter, buildPolylinePath, buildBezierPath } from '../utils/corridorGraph';
 
 const CELL_SIZE = 40;
 const MARGIN = 40;
@@ -2213,28 +2214,93 @@ export function GridCanvas() {
             if (groupCentroids.length < 2) return null;
 
             // 4. Build flow segments between group centroids
-            const segments: Array<{ from: typeof groupCentroids[0]; to: typeof groupCentroids[0] }> = [];
+            const processSegments: Array<{ from: typeof groupCentroids[0]; to: typeof groupCentroids[0] }> = [];
             for (let i = 0; i < groupCentroids.length - 1; i++) {
-              segments.push({ from: groupCentroids[i], to: groupCentroids[i + 1] });
+              processSegments.push({ from: groupCentroids[i], to: groupCentroids[i + 1] });
+            }
+
+            // 5. Identify inbound and outbound doors
+            const inboundDoors = doors.filter((d: any) => d.has_inbound_material && (d.inbound_percentage ?? 0) > 0);
+            const outboundDoors = doors.filter((d: any) => d.has_outbound_material && (d.outbound_percentage ?? 0) > 0);
+
+            const firstGroup = groupCentroids[0];
+            const lastGroup = groupCentroids[groupCentroids.length - 1];
+
+            // 6. Build corridor graph for routing
+            const graph = buildCorridorGraph(corridors);
+            const hasCorridorGraph = graph.nodes.size > 0;
+
+            // Helper: route a flow leg through corridors or fall back to Bézier
+            const routeLeg = (fromPx: { x: number; y: number }, toPx: { x: number; y: number }): string => {
+              if (!hasCorridorGraph) {
+                return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
+              }
+              // Convert pixel positions to grid
+              const fromGridX = Math.round((fromPx.x - MARGIN) / CELL_SIZE - 0.5);
+              const fromGridY = Math.round((fromPx.y - MARGIN) / CELL_SIZE - 0.5);
+              const toGridX = Math.round((toPx.x - MARGIN) / CELL_SIZE - 0.5);
+              const toGridY = Math.round((toPx.y - MARGIN) / CELL_SIZE - 0.5);
+
+              const pixelPath = routeFlowLeg(fromGridX, fromGridY, toGridX, toGridY, corridors, CELL_SIZE, MARGIN);
+              if (pixelPath && pixelPath.length >= 2) {
+                return buildPolylinePath(pixelPath);
+              }
+              return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
+            };
+
+            // Helper: get door pixel center position
+            const doorPixelCenter = (door: any) => {
+              const gc = getDoorGridCenter(door);
+              return {
+                x: MARGIN + gc.x * CELL_SIZE + CELL_SIZE / 2,
+                y: MARGIN + gc.y * CELL_SIZE + CELL_SIZE / 2,
+              };
+            };
+
+            // Build all flow paths: inbound legs, process legs, outbound legs
+            const allFlowPaths: Array<{ pathD: string; type: 'inbound' | 'process' | 'outbound'; label?: string }> = [];
+
+            // Inbound: door → first sequence step
+            for (const door of inboundDoors) {
+              const dp = doorPixelCenter(door);
+              const pathD = routeLeg(dp, { x: firstGroup.x, y: firstGroup.y });
+              const pct = door.inbound_percentage ?? 0;
+              allFlowPaths.push({ pathD, type: 'inbound', label: `${pct}% in` });
+            }
+
+            // Process: step-to-step
+            for (const seg of processSegments) {
+              const pathD = routeLeg({ x: seg.from.x, y: seg.from.y }, { x: seg.to.x, y: seg.to.y });
+              allFlowPaths.push({ pathD, type: 'process' });
+            }
+
+            // Outbound: last sequence step → door
+            for (const door of outboundDoors) {
+              const dp = doorPixelCenter(door);
+              const pathD = routeLeg({ x: lastGroup.x, y: lastGroup.y }, dp);
+              const pct = door.outbound_percentage ?? 0;
+              allFlowPaths.push({ pathD, type: 'outbound', label: `${pct}% out` });
             }
 
             // Collect all individual zone nodes for badges
             const allNodes = groupCentroids.flatMap(g => g.nodes);
 
+            // Color scheme: inbound = blue, process = slate, outbound = orange
+            const flowColor = (type: string) => type === 'inbound' ? '#2563EB' : type === 'outbound' ? '#EA580C' : '#475569';
+            const flowHalo = (type: string) => type === 'inbound' ? '#93C5FD' : type === 'outbound' ? '#FED7AA' : 'white';
+
             return (
               <g className="flow-overlay" style={{ pointerEvents: 'none' }}>
-                {/* Arrowhead marker */}
+                {/* Arrowhead markers for each flow type */}
                 <defs>
-                  <marker
-                    id="flow-arrow"
-                    viewBox="0 0 10 10"
-                    refX="9"
-                    refY="5"
-                    markerWidth="6"
-                    markerHeight="6"
-                    orient="auto-start-reverse"
-                  >
-                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569" opacity="0.7" />
+                  <marker id="flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569" opacity="0.8" />
+                  </marker>
+                  <marker id="flow-arrow-in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#2563EB" opacity="0.8" />
+                  </marker>
+                  <marker id="flow-arrow-out" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#EA580C" opacity="0.8" />
                   </marker>
                   <style>{`
                     @keyframes flowDash {
@@ -2243,32 +2309,52 @@ export function GridCanvas() {
                   `}</style>
                 </defs>
 
-                {/* Flow arrows — Bézier curves between group centroids */}
-                {segments.map((seg, idx) => {
-                  const dx = seg.to.x - seg.from.x;
-                  const dy = seg.to.y - seg.from.y;
-                  const dist = Math.sqrt(dx * dx + dy * dy);
-                  const curvature = Math.min(dist * 0.25, 40);
-                  const nx = -dy / (dist || 1);
-                  const ny = dx / (dist || 1);
-                  const mx = (seg.from.x + seg.to.x) / 2 + nx * curvature;
-                  const my = (seg.from.y + seg.to.y) / 2 + ny * curvature;
-                  const pathD = `M ${seg.from.x} ${seg.from.y} Q ${mx} ${my} ${seg.to.x} ${seg.to.y}`;
-
+                {/* All flow arrows */}
+                {allFlowPaths.map((fp, idx) => {
+                  const markerSuffix = fp.type === 'inbound' ? '-in' : fp.type === 'outbound' ? '-out' : '';
+                  const strokeW = fp.type === 'process' ? 2 : 2.5;
                   return (
                     <g key={`flow-${idx}`}>
-                      <path d={pathD} fill="none" stroke="white" strokeWidth="5" opacity="0.5" strokeLinecap="round" />
+                      {/* White halo for contrast */}
+                      <path d={fp.pathD} fill="none" stroke={flowHalo(fp.type)} strokeWidth={strokeW + 3} opacity="0.5" strokeLinecap="round" strokeLinejoin="round" />
+                      {/* Animated dashed line */}
                       <path
-                        d={pathD}
+                        d={fp.pathD}
                         fill="none"
-                        stroke="#475569"
-                        strokeWidth="2"
+                        stroke={flowColor(fp.type)}
+                        strokeWidth={strokeW}
                         strokeLinecap="round"
+                        strokeLinejoin="round"
                         strokeDasharray="8,4"
-                        markerEnd="url(#flow-arrow)"
-                        opacity="0.7"
+                        markerEnd={`url(#flow-arrow${markerSuffix})`}
+                        opacity="0.8"
                         style={{ animation: 'flowDash 1.5s linear infinite' }}
                       />
+                    </g>
+                  );
+                })}
+
+                {/* Percentage labels on inbound/outbound legs */}
+                {allFlowPaths.filter(fp => fp.label).map((fp, idx) => {
+                  // Parse first two coordinates from pathD to place label near start
+                  const coords = fp.pathD.match(/[\d.]+/g);
+                  if (!coords || coords.length < 4) return null;
+                  const x1 = parseFloat(coords[0]);
+                  const y1 = parseFloat(coords[1]);
+                  const x2 = parseFloat(coords[2]);
+                  const y2 = parseFloat(coords[3]);
+                  // Place label 30% along the first segment
+                  const lx = x1 + (x2 - x1) * 0.3;
+                  const ly = y1 + (y2 - y1) * 0.3;
+                  const color = flowColor(fp.type);
+                  const textLen = (fp.label?.length || 0) * 7 + 12;
+                  return (
+                    <g key={`label-${idx}`}>
+                      <rect x={lx - textLen / 2} y={ly - 10} width={textLen} height={20} rx="4" fill="white" opacity="0.9" />
+                      <rect x={lx - textLen / 2} y={ly - 10} width={textLen} height={20} rx="4" fill="none" stroke={color} strokeWidth="1.5" opacity="0.8" />
+                      <text x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fontSize="10" fontWeight="700" fill={color}>
+                        {fp.label}
+                      </text>
                     </g>
                   );
                 })}
@@ -2296,6 +2382,27 @@ export function GridCanvas() {
                     </text>
                   </g>
                 ))}
+
+                {/* Door flow badges — show inbound/outbound role on each tagged door */}
+                {[...inboundDoors, ...outboundDoors].filter((d, i, arr) => arr.findIndex(x => x.id === d.id) === i).map((door: any) => {
+                  const dp = doorPixelCenter(door);
+                  const isIn = door.has_inbound_material && (door.inbound_percentage ?? 0) > 0;
+                  const isOut = door.has_outbound_material && (door.outbound_percentage ?? 0) > 0;
+                  const label = isIn && isOut ? 'IN/OUT' : isIn ? 'IN' : 'OUT';
+                  const badgeColor = isIn && isOut ? '#7C3AED' : isIn ? '#2563EB' : '#EA580C';
+                  const badgeW = label.length * 8 + 12;
+                  // Offset badge outward from the door edge
+                  const offsetX = door.edge === 'left' ? -badgeW / 2 - 8 : door.edge === 'right' ? badgeW / 2 + 8 : 0;
+                  const offsetY = door.edge === 'top' ? -20 : door.edge === 'bottom' ? 20 : 0;
+                  return (
+                    <g key={`door-badge-${door.id}`}>
+                      <rect x={dp.x + offsetX - badgeW / 2} y={dp.y + offsetY - 9} width={badgeW} height={18} rx="4" fill={badgeColor} opacity="0.9" />
+                      <text x={dp.x + offsetX} y={dp.y + offsetY} textAnchor="middle" dominantBaseline="central" fontSize="10" fontWeight="700" fill="white">
+                        {label}
+                      </text>
+                    </g>
+                  );
+                })}
               </g>
             );
           })()}
