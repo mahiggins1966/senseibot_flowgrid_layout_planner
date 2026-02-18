@@ -17,7 +17,8 @@ import { supabase } from '../lib/supabase';
 import { calculateLayoutScore, LayoutScore } from '../utils/scoring';
 import { exportFloorPlanPDF } from '../utils/pdfExport';
 import { exportSetupInstructions } from '../utils/setupInstructionsExport';
-import { X, CheckCircle, AlertTriangle, XCircle, ChevronRight, FileText, ClipboardList, PlusCircle } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, XCircle, ChevronRight, FileText, ClipboardList, PlusCircle, Check } from 'lucide-react';
+import { getEquipmentIcon } from './ObjectLibrary';
 
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
 
@@ -45,6 +46,10 @@ export function StepRouter({
     dismissedFlags,
     dismissFlag,
     hoveredSquare,
+    showCustomEquipmentForm,
+    setShowCustomEquipmentForm,
+    customObjects,
+    setCustomObjects,
   } = useGridStore();
 
   const [scoreData, setScoreData] = useState<LayoutScore | null>(null);
@@ -52,6 +57,8 @@ export function StepRouter({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [bestScore, setBestScore] = useState(0);
   const [expandedFactors, setExpandedFactors] = useState<Set<string>>(new Set());
+  const [equipForm, setEquipForm] = useState({ name: '', grid_width: 1, grid_length: 1, color: '#6B7280' });
+  const [equipSaving, setEquipSaving] = useState(false);
 
   useEffect(() => {
     if (currentSubStep === '2f') {
@@ -161,6 +168,34 @@ export function StepRouter({
   const closeDrawer = () => {
     setDrawerOpen(false);
     setExpandedFactors(new Set());
+  };
+
+  const DEFAULT_EQUIP_COLORS = ['#6B7280', '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6'];
+
+  const handleSaveCustomEquipment = async () => {
+    if (!equipForm.name.trim()) return;
+    setEquipSaving(true);
+    const { data, error } = await supabase
+      .from('custom_objects')
+      .insert({
+        name: equipForm.name.trim(),
+        width_inches: equipForm.grid_width * 48,
+        length_inches: equipForm.grid_length * 48,
+        height_inches: 48,
+        color: equipForm.color,
+        grid_width: equipForm.grid_width,
+        grid_length: equipForm.grid_length,
+        is_default: false,
+      })
+      .select()
+      .single();
+    setEquipSaving(false);
+    if (error) { console.error('Error creating custom object:', error); return; }
+    if (data) {
+      setCustomObjects([...customObjects, data as any]);
+      setEquipForm({ name: '', grid_width: 1, grid_length: 1, color: '#6B7280' });
+      setShowCustomEquipmentForm(false);
+    }
   };
 
   const showGrid = ['2a', '2b', '2f'].includes(currentSubStep);
@@ -315,6 +350,119 @@ export function StepRouter({
 
           <div className="flex-1 bg-gray-100 overflow-hidden relative">
             <GridCanvas />
+
+            {/* Custom Equipment Form Popup */}
+            {currentSubStep === '2f' && showCustomEquipmentForm && (
+              <div
+                className="absolute"
+                style={{
+                  top: '12px',
+                  right: '244px',
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                  padding: '16px',
+                  width: '280px',
+                  zIndex: 35,
+                }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-bold text-gray-900">New Custom Equipment</span>
+                  <button
+                    onClick={() => setShowCustomEquipmentForm(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 block mb-1">Name</label>
+                    <input
+                      type="text"
+                      value={equipForm.name}
+                      onChange={(e) => setEquipForm({ ...equipForm, name: e.target.value })}
+                      placeholder="e.g. Conveyor Belt"
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs font-medium text-gray-700 block mb-1">Width (squares)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={equipForm.grid_width}
+                        onChange={(e) => setEquipForm({ ...equipForm, grid_width: Math.max(1, parseInt(e.target.value) || 1) })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-700 block mb-1">Length (squares)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={equipForm.grid_length}
+                        onChange={(e) => setEquipForm({ ...equipForm, grid_length: Math.max(1, parseInt(e.target.value) || 1) })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 block mb-1">Color</label>
+                    <div className="flex items-center gap-2">
+                      {DEFAULT_EQUIP_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => setEquipForm({ ...equipForm, color: c })}
+                          className={`w-6 h-6 rounded-full border-2 transition-all ${
+                            equipForm.color === c ? 'border-gray-900 scale-110' : 'border-transparent hover:border-gray-400'
+                          }`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={equipForm.color}
+                        onChange={(e) => setEquipForm({ ...equipForm, color: e.target.value })}
+                        className="w-6 h-6 border border-gray-300 rounded cursor-pointer"
+                        title="Custom color"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preview */}
+                  <div className="flex items-center gap-3 p-2 bg-gray-50 rounded border border-gray-200">
+                    <div
+                      className="w-9 h-9 rounded flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: equipForm.color }}
+                    >
+                      {(() => {
+                        const PreviewIcon = getEquipmentIcon(equipForm.name);
+                        return <PreviewIcon className="w-4 h-4 text-white" />;
+                      })()}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {equipForm.name || 'Equipment'} — {equipForm.grid_width} × {equipForm.grid_length}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveCustomEquipment}
+                    disabled={!equipForm.name.trim() || equipSaving}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Check size={14} />
+                    {equipSaving ? 'Saving...' : 'Add to Library'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Dashboard Card */}
             {currentSubStep === '2f' && scoreData && (

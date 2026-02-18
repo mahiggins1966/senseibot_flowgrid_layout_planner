@@ -57,6 +57,7 @@ interface GridStore {
   currentSubStep: SubStep;
   safetyOverlayEnabled: boolean;
   flowOverlayEnabled: boolean;
+  showCustomEquipmentForm: boolean;
   dismissedFlags: Set<string>;
   updateSettings: (settings: Partial<GridSettings>) => void;
   setZoom: (zoom: number, centerX?: number, centerY?: number) => void;
@@ -136,6 +137,7 @@ interface GridStore {
   canPaintSquares: () => boolean;
   toggleSafetyOverlay: () => void;
   toggleFlowOverlay: () => void;
+  setShowCustomEquipmentForm: (show: boolean) => void;
   dismissFlag: (flagId: string) => void;
   undismissFlag: (flagId: string) => void;
   isFlagDismissed: (flagId: string) => boolean;
@@ -207,6 +209,7 @@ export const useGridStore = create<GridStore>((set, get) => ({
   currentSubStep: '2a',
   safetyOverlayEnabled: false,
   flowOverlayEnabled: false,
+  showCustomEquipmentForm: false,
   dismissedFlags: new Set(),
 
   updateSettings: (newSettings) => {
@@ -760,6 +763,8 @@ export const useGridStore = create<GridStore>((set, get) => ({
   toggleSafetyOverlay: () => set((state) => ({ safetyOverlayEnabled: !state.safetyOverlayEnabled })),
 
   toggleFlowOverlay: () => set((state) => ({ flowOverlayEnabled: !state.flowOverlayEnabled })),
+
+  setShowCustomEquipmentForm: (show) => set({ showCustomEquipmentForm: show }),
 
   dismissFlag: (flagId) => {
     set((state) => {
