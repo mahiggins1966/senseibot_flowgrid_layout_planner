@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { DoorOpen, Trash2, X, AlertCircle, Route, RotateCcw } from 'lucide-react';
+import { DoorOpen, Trash2, X, AlertCircle } from 'lucide-react';
 import { useGridStore } from '../store/gridStore';
 import { supabase } from '../lib/supabase';
 import { Door, DoorType } from '../types';
@@ -24,11 +24,6 @@ export function DoorControls() {
     setIsAddingDoor,
     settings,
     canInteractWithDoors,
-    isDrawingFlowPath,
-    flowPathDoorId,
-    flowPathDirection,
-    startDrawingFlowPath,
-    cancelDrawingFlowPath,
   } = useGridStore();
 
   const [editingName, setEditingName] = useState<string | null>(null);
@@ -179,25 +174,6 @@ export function DoorControls() {
     });
 
     return `Openings: ${doors.length} marked (${summaryParts.join(', ')})`;
-  };
-
-  const handleDrawFlowPath = (door: Door, direction: 'inbound' | 'outbound') => {
-    if (isDrawingFlowPath && flowPathDoorId === door.id && flowPathDirection === direction) {
-      cancelDrawingFlowPath();
-      return;
-    }
-    startDrawingFlowPath(door.id, direction);
-  };
-
-  const handleClearFlowPath = async (door: Door, direction: 'inbound' | 'outbound') => {
-    const field = direction === 'inbound' ? 'inbound_flow_points' : 'outbound_flow_points';
-    const { error } = await supabase
-      .from('doors')
-      .update({ [field]: null })
-      .eq('id', door.id);
-    if (!error) {
-      updateDoor(door.id, { [field]: null } as any);
-    }
   };
 
   const getDoorTypeColor = (type: DoorType) => {
@@ -388,30 +364,7 @@ export function DoorControls() {
                           />
                           <span className="text-xs text-gray-600">% of total inbound</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDrawFlowPath(door, 'inbound'); }}
-                            className={`flex items-center gap-1 px-2 py-1 text-xs rounded font-medium transition-colors ${
-                              isDrawingFlowPath && flowPathDoorId === door.id && flowPathDirection === 'inbound'
-                                ? 'bg-blue-600 text-white'
-                                : door.inbound_flow_points ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            <Route className="w-3 h-3" />
-                            {isDrawingFlowPath && flowPathDoorId === door.id && flowPathDirection === 'inbound'
-                              ? 'Cancel'
-                              : door.inbound_flow_points ? 'Redraw Path' : 'Draw Inbound Path'}
-                          </button>
-                          {door.inbound_flow_points && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleClearFlowPath(door, 'inbound'); }}
-                              className="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium text-red-600 hover:bg-red-50 transition-colors"
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                              Clear
-                            </button>
-                          )}
-                        </div>
+
                       </div>
                     )}
 
@@ -452,30 +405,7 @@ export function DoorControls() {
                           />
                           <span className="text-xs text-gray-600">% of total outbound</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDrawFlowPath(door, 'outbound'); }}
-                            className={`flex items-center gap-1 px-2 py-1 text-xs rounded font-medium transition-colors ${
-                              isDrawingFlowPath && flowPathDoorId === door.id && flowPathDirection === 'outbound'
-                                ? 'bg-orange-600 text-white'
-                                : door.outbound_flow_points ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            <Route className="w-3 h-3" />
-                            {isDrawingFlowPath && flowPathDoorId === door.id && flowPathDirection === 'outbound'
-                              ? 'Cancel'
-                              : door.outbound_flow_points ? 'Redraw Path' : 'Draw Outbound Path'}
-                          </button>
-                          {door.outbound_flow_points && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleClearFlowPath(door, 'outbound'); }}
-                              className="flex items-center gap-1 px-2 py-1 text-xs rounded font-medium text-red-600 hover:bg-red-50 transition-colors"
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                              Clear
-                            </button>
-                          )}
-                        </div>
+
                       </div>
                     )}
 
