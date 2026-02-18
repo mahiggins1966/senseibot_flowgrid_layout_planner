@@ -12,6 +12,7 @@ import { ActivityZoneDrawer } from './ActivityZoneDrawer';
 import { ActivityZonePopup } from './ActivityZonePopup';
 import { CorridorPopup } from './CorridorPopup';
 import CorridorDrawingPanel from './CorridorDrawingPanel';
+import { FlowPathDrawer } from './FlowPathDrawer';
 import { useGridStore } from '../store/gridStore';
 import { supabase } from '../lib/supabase';
 import { calculateLayoutScore, LayoutScore } from '../utils/scoring';
@@ -288,6 +289,15 @@ export function StepRouter({
                       </summary>
                       <div style={{ padding: '8px' }}>
                         <CorridorDrawingPanel />
+                      </div>
+                    </details>
+
+                    <details>
+                      <summary style={{ fontWeight: 'bold', cursor: 'pointer', padding: '8px', backgroundColor: '#f3f4f6', borderRadius: '4px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Inbound / Outbound Paths</span>
+                      </summary>
+                      <div style={{ padding: '8px' }}>
+                        <FlowPathDrawer />
                       </div>
                     </details>
                   </div>
