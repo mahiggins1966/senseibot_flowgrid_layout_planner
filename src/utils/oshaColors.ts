@@ -3,7 +3,7 @@
 export const OSHA_COLORS = {
   // Corridor colors
   PEDESTRIAN_WALKWAY: '#FFD700', // Yellow
-  FORKLIFT_PATH: '#FFFFFF', // White
+  FORKLIFT_PATH: '#E0E0E0', // Light gray (visible on white grid)
 
   // Zone colors
   STAGING_LANE: '#2563EB', // Blue
