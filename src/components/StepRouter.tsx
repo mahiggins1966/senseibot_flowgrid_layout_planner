@@ -568,7 +568,7 @@ export function StepRouter({
                   </div>
                   {spaceMetrics.materialTravelFt > 0 && (
                     <div style={{ color: '#2563eb', fontWeight: 500 }}>
-                      📦 {spaceMetrics.materialTravelFt.toLocaleString()} ft travel
+                      {spaceMetrics.materialTravelFt.toLocaleString()} ft mat'l travel
                     </div>
                   )}
                 </div>
