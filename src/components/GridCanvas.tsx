@@ -2026,7 +2026,7 @@ export function GridCanvas() {
                   return;
                 }
                 setSelectedCorridor(corridor);
-              }} style={{ pointerEvents: isDrawingCorridor ? 'none' : 'auto' }}>
+              }} style={{ pointerEvents: (isDrawingCorridor || isDrawingFlowPath) ? 'none' : 'auto' }}>
                   {segments.map((seg, si) => (
                   <rect
                     key={`seg-${si}`}
@@ -2257,7 +2257,7 @@ export function GridCanvas() {
                 : y - 8;
 
             return (
-              <g key={door.id} style={{ pointerEvents: isDrawingCorridor ? 'none' : 'auto' }}>
+              <g key={door.id} style={{ pointerEvents: (isDrawingCorridor || isDrawingFlowPath) ? 'none' : 'auto' }}>
                 <rect
                   x={x}
                   y={y}
