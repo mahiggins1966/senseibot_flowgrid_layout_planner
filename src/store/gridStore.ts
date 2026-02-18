@@ -41,6 +41,10 @@ interface GridStore {
   corridorDrawStart: GridCoordinate | null;
   corridorWaypoints: Array<{ row: number; col: number }>;
   selectedCorridorType: CorridorType | null;
+  isDrawingFlowPath: boolean;
+  flowPathDoorId: string | null;
+  flowPathDirection: 'inbound' | 'outbound' | null;
+  flowPathWaypoints: Array<{ row: number; col: number }>;
   doorDrawStart: GridCoordinate | null;
   doorDrawEnd: GridCoordinate | null;
   draggingDoor: Door | null;
@@ -92,6 +96,13 @@ interface GridStore {
   setCorridorWaypoints: (waypoints: Array<{ row: number; col: number }>) => void;
   addCorridorWaypoint: (point: { row: number; col: number }) => void;
   setSelectedCorridorType: (type: CorridorType | null) => void;
+  setIsDrawingFlowPath: (isDrawing: boolean) => void;
+  setFlowPathDoorId: (doorId: string | null) => void;
+  setFlowPathDirection: (direction: 'inbound' | 'outbound' | null) => void;
+  setFlowPathWaypoints: (waypoints: Array<{ row: number; col: number }>) => void;
+  addFlowPathWaypoint: (point: { row: number; col: number }) => void;
+  startDrawingFlowPath: (doorId: string, direction: 'inbound' | 'outbound') => void;
+  cancelDrawingFlowPath: () => void;
   setIsDrawingZone: (isDrawing: boolean) => void;
   setZoneDrawStart: (start: GridCoordinate | null) => void;
   setSelectedActivityForZone: (activityId: string | null) => void;
@@ -196,6 +207,10 @@ export const useGridStore = create<GridStore>((set, get) => ({
   corridorDrawStart: null,
   corridorWaypoints: [],
   selectedCorridorType: null,
+  isDrawingFlowPath: false,
+  flowPathDoorId: null,
+  flowPathDirection: null,
+  flowPathWaypoints: [],
   doorDrawStart: null,
   doorDrawEnd: null,
   draggingDoor: null,
@@ -380,6 +395,29 @@ export const useGridStore = create<GridStore>((set, get) => ({
   addCorridorWaypoint: (point) => set((state) => ({ corridorWaypoints: [...state.corridorWaypoints, point] })),
 
   setSelectedCorridorType: (type) => set({ selectedCorridorType: type }),
+
+  setIsDrawingFlowPath: (isDrawing) => set({ isDrawingFlowPath: isDrawing }),
+  setFlowPathDoorId: (doorId) => set({ flowPathDoorId: doorId }),
+  setFlowPathDirection: (direction) => set({ flowPathDirection: direction }),
+  setFlowPathWaypoints: (waypoints) => set({ flowPathWaypoints: waypoints }),
+  addFlowPathWaypoint: (point) => set((state) => ({ flowPathWaypoints: [...state.flowPathWaypoints, point] })),
+  startDrawingFlowPath: (doorId, direction) => set({
+    isDrawingFlowPath: true,
+    flowPathDoorId: doorId,
+    flowPathDirection: direction,
+    flowPathWaypoints: [],
+    // Turn off other drawing modes
+    isDrawingCorridor: false,
+    isDrawingZone: false,
+    isAddingDoor: false,
+    paintMode: null,
+  }),
+  cancelDrawingFlowPath: () => set({
+    isDrawingFlowPath: false,
+    flowPathDoorId: null,
+    flowPathDirection: null,
+    flowPathWaypoints: [],
+  }),
 
   setIsDrawingZone: (isDrawing) => set({ isDrawingZone: isDrawing }),
 

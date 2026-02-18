@@ -6,7 +6,7 @@ import { getGridCoordinate, getRowLabel, getColumnLabel } from '../utils/coordin
 import { supabase } from '../lib/supabase';
 import { Zone, PlacedObject, GridCoordinate, Door, DoorType, Corridor } from '../types';
 import { getActivityColor, getActivityBorderColor, getCorridorColor, getCorridorBorderColor, OSHA_COLORS } from '../utils/oshaColors';
-import { buildCorridorGraph, findNearestNode, findPath, routeFlowLeg, getDoorGridCenter, buildPolylinePath, buildBezierPath } from '../utils/corridorGraph';
+import { getDoorGridCenter, buildPolylinePath, buildBezierPath } from '../utils/corridorGraph';
 
 const CELL_SIZE = 40;
 const MARGIN = 40;
@@ -95,6 +95,13 @@ export function GridCanvas() {
     setHoveredSquare,
     updateCorridor,
     flowOverlayEnabled,
+    isDrawingFlowPath,
+    flowPathDoorId,
+    flowPathDirection,
+    flowPathWaypoints,
+    addFlowPathWaypoint,
+    setFlowPathWaypoints,
+    cancelDrawingFlowPath,
   } = useGridStore();
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [isDraggingObject, setIsDraggingObject] = useState(false);
@@ -226,11 +233,18 @@ export function GridCanvas() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && isDrawingFlowPath && flowPathWaypoints.length >= 2) {
+        saveFlowPath(flowPathWaypoints);
+        return;
+      }
       if (e.key === 'Enter' && isDrawingCorridor && corridorWaypoints.length >= 2 && selectedCorridorType) {
         createCorridorFromWaypoints(corridorWaypoints, selectedCorridorType);
         return;
       }
       if (e.key === 'Escape') {
+        if (isDrawingFlowPath) {
+          cancelDrawingFlowPath();
+        }
         if (dragCleanupRef.current) {
           dragCleanupRef.current();
           dragCleanupRef.current = null;
@@ -281,7 +295,7 @@ export function GridCanvas() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDrawingZone, paintMode, isAddingDoor, isDraggingObject, isDrawingCorridor, corridorWaypoints, selectedCorridorType, setIsDrawingZone, setPaintMode, setSelectedActivityForZone, setIsAddingDoor, setDoorDrawStart, setDoorDrawEnd, setIsDrawingCorridor, setCorridorDrawStart, setCorridorWaypoints, setSelectedCorridorType, draggingZone, setDraggingZone, resizingZone, setResizingZone, setDragOffset, holdTimer]);
+  }, [isDrawingZone, paintMode, isAddingDoor, isDraggingObject, isDrawingCorridor, corridorWaypoints, selectedCorridorType, isDrawingFlowPath, flowPathWaypoints, setIsDrawingZone, setPaintMode, setSelectedActivityForZone, setIsAddingDoor, setDoorDrawStart, setDoorDrawEnd, setIsDrawingCorridor, setCorridorDrawStart, setCorridorWaypoints, setSelectedCorridorType, cancelDrawingFlowPath, draggingZone, setDraggingZone, resizingZone, setResizingZone, setDragOffset, holdTimer]);
 
 
   const loadData = async () => {
@@ -425,6 +439,31 @@ export function GridCanvas() {
 
     setIsMouseDown(true);
 
+    // FLOW PATH DRAWING - click waypoints for inbound/outbound material flow
+    if (isDrawingFlowPath && flowPathDoorId && flowPathDirection) {
+      const waypoints = useGridStore.getState().flowPathWaypoints;
+
+      if (waypoints.length === 0) {
+        addFlowPathWaypoint({ row, col });
+      } else {
+        const prev = waypoints[waypoints.length - 1];
+        const deltaX = Math.abs(col - prev.col);
+        const deltaY = Math.abs(row - prev.row);
+        const snappedRow = deltaX >= deltaY ? prev.row : row;
+        const snappedCol = deltaX >= deltaY ? col : prev.col;
+
+        // Double-click finishes
+        if (e.detail >= 2 && waypoints.length >= 2) {
+          saveFlowPath(waypoints);
+          return;
+        }
+
+        if (snappedRow === prev.row && snappedCol === prev.col) return;
+        addFlowPathWaypoint({ row: snappedRow, col: snappedCol });
+      }
+      return;
+    }
+
     // CORRIDOR HANDLING - MULTI-POINT WAYPOINT DRAWING
     if (isDrawingCorridor && selectedCorridorType) {
       if (!canInteractWithZones()) return;
@@ -506,6 +545,26 @@ export function GridCanvas() {
       }
       return;
     }
+  };
+
+  const saveFlowPath = async (waypoints: Array<{ row: number; col: number }>) => {
+    if (waypoints.length < 2 || !flowPathDoorId || !flowPathDirection) return;
+
+    const points = waypoints.map(wp => ({ x: wp.col, y: wp.row }));
+    const field = flowPathDirection === 'inbound' ? 'inbound_flow_points' : 'outbound_flow_points';
+
+    const { error } = await supabase
+      .from('doors')
+      .update({ [field]: points })
+      .eq('id', flowPathDoorId);
+
+    if (!error) {
+      updateDoor(flowPathDoorId, { [field]: points } as any);
+    } else {
+      console.error('Error saving flow path:', error);
+    }
+
+    cancelDrawingFlowPath();
   };
 
   const createCorridorFromWaypoints = async (waypoints: Array<{ row: number; col: number }>, type: 'pedestrian' | 'forklift') => {
@@ -1136,6 +1195,20 @@ export function GridCanvas() {
         </div>
       )}
 
+      {isDrawingFlowPath && flowPathDoorId && flowPathDirection && (
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/85 backdrop-blur text-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${flowPathDirection === 'inbound' ? 'bg-blue-400' : 'bg-orange-400'}`} />
+          <span>
+            <strong>Draw {flowPathDirection === 'inbound' ? 'Inbound' : 'Outbound'} Path</strong>
+            {' — '}
+            {flowPathWaypoints.length === 0
+              ? 'click to place start point'
+              : `${flowPathWaypoints.length} point${flowPathWaypoints.length > 1 ? 's' : ''} · click to add bend · double-click or Enter to finish`}
+            {' · Esc to cancel'}
+          </span>
+        </div>
+      )}
+
       {isAddingDoor && (
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900/85 backdrop-blur text-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-orange-400 shrink-0" />
@@ -1224,7 +1297,7 @@ export function GridCanvas() {
             }
 
             return (
-              <g key={zone.id} onClick={(e) => handleZoneClick(e, zone)} style={{ pointerEvents: isDrawingCorridor ? 'none' : 'auto' }}>
+              <g key={zone.id} onClick={(e) => handleZoneClick(e, zone)} style={{ pointerEvents: (isDrawingCorridor || isDrawingFlowPath) ? 'none' : 'auto' }}>
                 {/* Glow effect - outer rects with multiple layers for visibility */}
                 {glowInfo && (
                   <>
@@ -1834,7 +1907,7 @@ export function GridCanvas() {
                 style={{
                   opacity: isBeingRepositioned ? 0.3 : 1,
                   cursor: 'move',
-                  pointerEvents: isDrawingCorridor ? 'none' : 'auto',
+                  pointerEvents: (isDrawingCorridor || isDrawingFlowPath) ? 'none' : 'auto',
                 }}
               >
                 <rect
@@ -2051,6 +2124,68 @@ export function GridCanvas() {
             />
           ))}
 
+          {/* Flow path drawing preview — completed segments */}
+          {isDrawingFlowPath && flowPathWaypoints.length >= 2 && (() => {
+            const color = flowPathDirection === 'inbound' ? '#2563EB' : '#EA580C';
+            return flowPathWaypoints.slice(0, -1).map((wp, wi) => {
+              const next = flowPathWaypoints[wi + 1];
+              return (
+                <line
+                  key={`fp-seg-${wi}`}
+                  x1={MARGIN + wp.col * CELL_SIZE + CELL_SIZE / 2}
+                  y1={MARGIN + wp.row * CELL_SIZE + CELL_SIZE / 2}
+                  x2={MARGIN + next.col * CELL_SIZE + CELL_SIZE / 2}
+                  y2={MARGIN + next.row * CELL_SIZE + CELL_SIZE / 2}
+                  stroke={color}
+                  strokeWidth="3"
+                  strokeDasharray="8,4"
+                  opacity="0.7"
+                  className="pointer-events-none"
+                />
+              );
+            });
+          })()}
+
+          {/* Flow path preview segment from last waypoint to cursor */}
+          {isDrawingFlowPath && flowPathWaypoints.length > 0 && hoveredSquare && (() => {
+            const prev = flowPathWaypoints[flowPathWaypoints.length - 1];
+            const deltaX = Math.abs(hoveredSquare.col - prev.col);
+            const deltaY = Math.abs(hoveredSquare.row - prev.row);
+            const snappedRow = deltaX >= deltaY ? prev.row : hoveredSquare.row;
+            const snappedCol = deltaX >= deltaY ? hoveredSquare.col : prev.col;
+            const color = flowPathDirection === 'inbound' ? '#2563EB' : '#EA580C';
+            return (
+              <line
+                x1={MARGIN + prev.col * CELL_SIZE + CELL_SIZE / 2}
+                y1={MARGIN + prev.row * CELL_SIZE + CELL_SIZE / 2}
+                x2={MARGIN + snappedCol * CELL_SIZE + CELL_SIZE / 2}
+                y2={MARGIN + snappedRow * CELL_SIZE + CELL_SIZE / 2}
+                stroke={color}
+                strokeWidth="3"
+                strokeDasharray="6,4"
+                opacity="0.4"
+                className="pointer-events-none"
+              />
+            );
+          })()}
+
+          {/* Flow path waypoint dots */}
+          {isDrawingFlowPath && flowPathWaypoints.map((wp, wi) => {
+            const color = flowPathDirection === 'inbound' ? '#2563EB' : '#EA580C';
+            return (
+              <circle
+                key={`fp-dot-${wi}`}
+                cx={MARGIN + wp.col * CELL_SIZE + CELL_SIZE / 2}
+                cy={MARGIN + wp.row * CELL_SIZE + CELL_SIZE / 2}
+                r="5"
+                fill="white"
+                stroke={color}
+                strokeWidth="2"
+                className="pointer-events-none"
+              />
+            );
+          })}
+
           {doorDrawStart && doorDrawEnd && (
             (() => {
               const edge = getBoundaryEdge(doorDrawStart.row, doorDrawStart.col);
@@ -2224,95 +2359,25 @@ export function GridCanvas() {
             const inboundDoors = doors.filter((d: any) => d.has_inbound_material && (d.inbound_percentage ?? 0) > 0);
             const outboundDoors = doors.filter((d: any) => d.has_outbound_material && (d.outbound_percentage ?? 0) > 0);
 
-            const firstGroup = groupCentroids[0];
-            const lastGroup = groupCentroids[groupCentroids.length - 1];
-
-            // 6. Build corridor graph ONCE for all routing
-            const graph = buildCorridorGraph(corridors);
-            const hasCorridorGraph = graph.nodes.size > 0;
-
-            console.log('[Flow] Corridor graph:', graph.nodes.size, 'nodes,', graph.edges.length / 2, 'edges');
-            if (hasCorridorGraph) {
-              for (const [key, node] of graph.nodes) {
-                console.log('[Flow]   Node:', key, '→ grid col:', node.x, 'row:', node.y);
-              }
-            }
-
-            // Helper: convert pixel center back to grid col/row
-            const pxToGrid = (px: { x: number; y: number }) => ({
-              col: Math.floor((px.x - MARGIN) / CELL_SIZE),
-              row: Math.floor((px.y - MARGIN) / CELL_SIZE),
-            });
-
-            // Helper: route a flow leg through corridors or fall back to Bézier
-            const routeLeg = (fromPx: { x: number; y: number }, toPx: { x: number; y: number }, label?: string): string => {
-              if (!hasCorridorGraph) {
-                console.log('[Flow]', label || '', '→ no corridor graph, using Bézier');
-                return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
-              }
-
-              const fromGrid = pxToGrid(fromPx);
-              const toGrid = pxToGrid(toPx);
-
-              // Snap to nearest corridor nodes
-              const snapFrom = findNearestNode(graph, fromGrid.col, fromGrid.row);
-              const snapTo = findNearestNode(graph, toGrid.col, toGrid.row);
-
-              console.log('[Flow]', label || '', '→ from grid:', fromGrid, 'to grid:', toGrid,
-                'snapFrom:', snapFrom?.key, 'dist:', snapFrom?.distance,
-                'snapTo:', snapTo?.key, 'dist:', snapTo?.distance);
-
-              if (!snapFrom || !snapTo) {
-                console.log('[Flow]', label || '', '→ snap failed, using Bézier');
-                return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
-              }
-
-              // Don't route if snap distance is too far (> 20 squares)
-              if (snapFrom.distance > 20 || snapTo.distance > 20) {
-                console.log('[Flow]', label || '', '→ snap too far, using Bézier');
-                return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
-              }
-
-              const gridPath = findPath(graph, snapFrom.key, snapTo.key);
-              console.log('[Flow]', label || '', '→ path:', gridPath);
-
-              if (!gridPath || gridPath.length < 1) {
-                console.log('[Flow]', label || '', '→ no path found, using Bézier');
-                return buildBezierPath(fromPx.x, fromPx.y, toPx.x, toPx.y);
-              }
-
-              // Build pixel polyline: source → corridor waypoints → destination
-              const pixelPath: Array<{ x: number; y: number }> = [fromPx];
-              for (const pt of gridPath) {
-                pixelPath.push({
-                  x: MARGIN + pt.x * CELL_SIZE + CELL_SIZE / 2,
-                  y: MARGIN + pt.y * CELL_SIZE + CELL_SIZE / 2,
-                });
-              }
-              pixelPath.push(toPx);
-
-              console.log('[Flow]', label || '', '→ ROUTED through', gridPath.length, 'corridor waypoints');
+            // Helper: convert user-drawn flow points to SVG polyline path
+            const flowPointsToPath = (pts: Array<{ x: number; y: number }>): string => {
+              const pixelPath = pts.map(pt => ({
+                x: MARGIN + pt.x * CELL_SIZE + CELL_SIZE / 2,
+                y: MARGIN + pt.y * CELL_SIZE + CELL_SIZE / 2,
+              }));
               return buildPolylinePath(pixelPath);
             };
 
-            // Helper: get door pixel center position
-            const doorPixelCenter = (door: any) => {
-              const gc = getDoorGridCenter(door);
-              return {
-                x: MARGIN + gc.x * CELL_SIZE + CELL_SIZE / 2,
-                y: MARGIN + gc.y * CELL_SIZE + CELL_SIZE / 2,
-              };
-            };
-
-            // Build all flow paths: inbound legs, process legs, outbound legs
+            // Build all flow paths
             const allFlowPaths: Array<{ pathD: string; type: 'inbound' | 'process' | 'outbound'; label?: string }> = [];
 
-            // Inbound: door → first sequence step (route through corridors)
+            // Inbound: user-drawn paths from doors
             for (const door of inboundDoors) {
-              const dp = doorPixelCenter(door);
-              const pathD = routeLeg(dp, { x: firstGroup.x, y: firstGroup.y }, `INBOUND ${door.name} ${door.inbound_percentage}%`);
-              const pct = door.inbound_percentage ?? 0;
-              allFlowPaths.push({ pathD, type: 'inbound', label: `${pct}%` });
+              if (door.inbound_flow_points && door.inbound_flow_points.length >= 2) {
+                const pathD = flowPointsToPath(door.inbound_flow_points);
+                const pct = door.inbound_percentage ?? 0;
+                allFlowPaths.push({ pathD, type: 'inbound', label: `${pct}%` });
+              }
             }
 
             // Process: step-to-step (direct Bézier between adjacent zones)
@@ -2320,6 +2385,15 @@ export function GridCanvas() {
               const seg = processSegments[pi];
               const pathD = buildBezierPath(seg.from.x, seg.from.y, seg.to.x, seg.to.y);
               allFlowPaths.push({ pathD, type: 'process' });
+            }
+
+            // Outbound: user-drawn paths from doors
+            for (const door of outboundDoors) {
+              if (door.outbound_flow_points && door.outbound_flow_points.length >= 2) {
+                const pathD = flowPointsToPath(door.outbound_flow_points);
+                const pct = door.outbound_percentage ?? 0;
+                allFlowPaths.push({ pathD, type: 'outbound', label: `${pct}%` });
+              }
             }
 
             // Collect all individual zone nodes for badges
@@ -2425,7 +2499,8 @@ export function GridCanvas() {
 
                 {/* Door flow badges — show inbound/outbound role on each tagged door */}
                 {[...inboundDoors, ...outboundDoors].filter((d, i, arr) => arr.findIndex(x => x.id === d.id) === i).map((door: any) => {
-                  const dp = doorPixelCenter(door);
+                  const gc = getDoorGridCenter(door);
+                  const dp = { x: MARGIN + gc.x * CELL_SIZE + CELL_SIZE / 2, y: MARGIN + gc.y * CELL_SIZE + CELL_SIZE / 2 };
                   const isIn = door.has_inbound_material && (door.inbound_percentage ?? 0) > 0;
                   const isOut = door.has_outbound_material && (door.outbound_percentage ?? 0) > 0;
                   const label = isIn && isOut ? 'IN/OUT' : isIn ? 'IN' : 'OUT';

@@ -129,6 +129,8 @@ export interface Door {
   is_personnel_only: boolean;
   inbound_percentage: number | null;
   outbound_percentage: number | null;
+  inbound_flow_points: Array<{ x: number; y: number }> | null;
+  outbound_flow_points: Array<{ x: number; y: number }> | null;
   edge: 'top' | 'bottom' | 'left' | 'right';
   created_at: string;
 }
