@@ -41,6 +41,9 @@ export function Step2FBuildLayout({ onComplete }: Step2FBuildLayoutProps) {
             <ActivityZoneDrawer />
             <ObjectLibrary />
             <CorridorDrawer />
+            <div style={{ border: '4px solid red', padding: '16px', backgroundColor: '#FEE2E2' }}>
+              <strong style={{ color: 'red', fontSize: '16px' }}>🔴 FLOW PATH DRAWER TEST 🔴</strong>
+            </div>
             <FlowPathDrawer />
           </div>
 
