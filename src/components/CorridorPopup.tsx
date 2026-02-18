@@ -10,14 +10,19 @@ export function CorridorPopup() {
   const handleDelete = async () => {
     if (!selectedCorridor) return;
 
+    // Remove from local state immediately
+    const corridorId = selectedCorridor.id;
+    deleteCorridor(corridorId);
+    setSelectedCorridor(null);
+
+    // Then remove from Supabase (best-effort)
     const { error } = await supabase
       .from('corridors')
       .delete()
-      .eq('id', selectedCorridor.id);
+      .eq('id', corridorId);
 
-    if (!error) {
-      deleteCorridor(selectedCorridor.id);
-      setSelectedCorridor(null);
+    if (error) {
+      console.error('Error deleting corridor from DB:', error);
     }
   };
 
@@ -25,14 +30,25 @@ export function CorridorPopup() {
     setSelectedCorridor(null);
   };
 
-  const isHorizontal = selectedCorridor.start_grid_y === selectedCorridor.end_grid_y;
-  const length = isHorizontal
-    ? Math.abs(selectedCorridor.end_grid_x - selectedCorridor.start_grid_x) + 1
-    : Math.abs(selectedCorridor.end_grid_y - selectedCorridor.start_grid_y) + 1;
+  // Calculate total length from points array (multi-segment aware)
+  const pts = selectedCorridor.points && selectedCorridor.points.length >= 2
+    ? selectedCorridor.points
+    : [
+        { x: selectedCorridor.start_grid_x, y: selectedCorridor.start_grid_y },
+        { x: selectedCorridor.end_grid_x, y: selectedCorridor.end_grid_y },
+      ];
 
-  const lengthFeet = length * settings.squareSize;
+  let totalSquares = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const dx = Math.abs(pts[i + 1].x - pts[i].x);
+    const dy = Math.abs(pts[i + 1].y - pts[i].y);
+    totalSquares += Math.max(dx, dy) + (i === 0 ? 1 : 0);
+  }
+
+  const lengthFeet = totalSquares * settings.squareSize;
   const widthFeet = selectedCorridor.width * settings.squareSize;
   const typeName = selectedCorridor.type === 'pedestrian' ? 'Pedestrian Walkway' : 'Forklift / Cart Path';
+  const segmentCount = pts.length - 1;
 
   return (
     <div className="fixed top-20 right-4 w-80 bg-white rounded-lg shadow-xl border-2 border-gray-300 z-40">
@@ -65,7 +81,7 @@ export function CorridorPopup() {
               {lengthFeet} ft
             </div>
             <div className="text-xs text-gray-600">
-              {length} squares
+              {totalSquares} squares
             </div>
           </div>
 
@@ -81,9 +97,9 @@ export function CorridorPopup() {
         </div>
 
         <div className="bg-gray-50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 mb-1">Orientation</div>
+          <div className="text-xs text-gray-500 mb-1">Shape</div>
           <div className="text-sm font-medium text-gray-900">
-            {isHorizontal ? 'Horizontal' : 'Vertical'}
+            {segmentCount === 1 ? 'Straight' : `${segmentCount} segments (${pts.length} waypoints)`}
           </div>
         </div>
 

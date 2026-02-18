@@ -69,15 +69,17 @@ export default function CorridorDrawingPanel() {
   };
 
   const handleDeleteCorridor = async (id: string) => {
+    // Remove from local state immediately
+    deleteCorridor(id);
+
+    // Then remove from Supabase (best-effort)
     const { error } = await supabase
       .from('corridors')
       .delete()
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting corridor:', error);
-    } else {
-      deleteCorridor(id);
+      console.error('Error deleting corridor from DB:', error);
     }
   };
 
@@ -288,69 +290,65 @@ export default function CorridorDrawingPanel() {
                   </div>
                   <div style={{ display: 'flex', gap: '4px' }}>
                     {isEditing ? (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSaveEdit();
-                          }}
-                          style={{
-                            padding: '4px',
-                            backgroundColor: '#D1FAE5',
-                            border: '1px solid #10B981',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                          title="Save name"
-                        >
-                          <Check size={14} color="#10B981" />
-                        </button>
-                      </>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSaveEdit();
+                        }}
+                        style={{
+                          padding: '4px',
+                          backgroundColor: '#D1FAE5',
+                          border: '1px solid #10B981',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title="Save name"
+                      >
+                        <Check size={14} color="#10B981" />
+                      </button>
                     ) : (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartEdit(corridor);
-                          }}
-                          style={{
-                            padding: '4px',
-                            backgroundColor: '#E0E7FF',
-                            border: '1px solid #6366F1',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                          title="Rename corridor"
-                        >
-                          <Edit2 size={14} color="#6366F1" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCorridor(corridor.id);
-                          }}
-                          style={{
-                            padding: '4px',
-                            backgroundColor: '#FEE2E2',
-                            border: '1px solid #DC2626',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                          title="Delete corridor"
-                        >
-                          <Trash2 size={14} color="#DC2626" />
-                        </button>
-                      </>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartEdit(corridor);
+                        }}
+                        style={{
+                          padding: '4px',
+                          backgroundColor: '#E0E7FF',
+                          border: '1px solid #6366F1',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title="Rename corridor"
+                      >
+                        <Edit2 size={14} color="#6366F1" />
+                      </button>
                     )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCorridor(corridor.id);
+                      }}
+                      style={{
+                        padding: '4px',
+                        backgroundColor: '#FEE2E2',
+                        border: '1px solid #DC2626',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title="Delete corridor"
+                    >
+                      <Trash2 size={14} color="#DC2626" />
+                    </button>
                   </div>
                 </div>
               );
