@@ -12,6 +12,7 @@ interface LayoutAnalysis {
   objectCount: number;
   zoneSqFt: number;
   corridorSqFt: number;
+  materialTravelFt: number;
   created_at: string;
   updated_at: string;
   zones: Zone[];
@@ -111,6 +112,56 @@ export async function exportComparativeAnalysis(projectId: string) {
       flowPaths,
     });
 
+    // Calculate material travel distance for this layout
+    const pathDistSquares = (pts: Array<{ x: number; y: number }>) => {
+      let d = 0;
+      for (let i = 0; i < pts.length - 1; i++) {
+        d += Math.abs(pts[i + 1].x - pts[i].x) + Math.abs(pts[i + 1].y - pts[i].y);
+      }
+      return d;
+    };
+
+    let weightedInbound = 0;
+    doors.filter(d => d.has_inbound_material).forEach(door => {
+      const pts = flowPaths[`${door.id}_inbound`];
+      if (pts && pts.length >= 2) {
+        weightedInbound += pathDistSquares(pts) * ((door.inbound_percentage ?? 0) / 100);
+      }
+    });
+
+    let weightedOutbound = 0;
+    doors.filter(d => d.has_outbound_material).forEach(door => {
+      const pts = flowPaths[`${door.id}_outbound`];
+      if (pts && pts.length >= 2) {
+        weightedOutbound += pathDistSquares(pts) * ((door.outbound_percentage ?? 0) / 100);
+      }
+    });
+
+    // Process flow: centroid-to-centroid along sequence
+    const seqActs = activities
+      .filter(a => a.sequence_order != null && (a.sequence_order as number) > 0)
+      .sort((a, b) => ((a.sequence_order as number) || 0) - ((b.sequence_order as number) || 0));
+    const seqGroups = new Map<number, { cx: number; cy: number }>();
+    for (const act of seqActs) {
+      const actZones = zones.filter(z => z.activity_id === act.id);
+      if (actZones.length === 0) continue;
+      const seq = act.sequence_order as number;
+      if (!seqGroups.has(seq)) {
+        let cx = 0, cy = 0;
+        for (const z of actZones) { cx += z.grid_x + z.grid_width / 2; cy += z.grid_y + z.grid_height / 2; }
+        seqGroups.set(seq, { cx: cx / actZones.length, cy: cy / actZones.length });
+      }
+    }
+    const sortedSeqs = Array.from(seqGroups.keys()).sort((a, b) => a - b);
+    let processSquares = 0;
+    for (let i = 0; i < sortedSeqs.length - 1; i++) {
+      const from = seqGroups.get(sortedSeqs[i])!;
+      const to = seqGroups.get(sortedSeqs[i + 1])!;
+      processSquares += Math.sqrt(Math.pow(to.cx - from.cx, 2) + Math.pow(to.cy - from.cy, 2));
+    }
+
+    const materialTravelFt = Math.round((weightedInbound + processSquares + weightedOutbound) * s.square_size);
+
     layoutAnalyses.push({
       id: layout.id,
       name: layout.name,
@@ -120,6 +171,7 @@ export async function exportComparativeAnalysis(projectId: string) {
       objectCount: objectsRes.data?.length || 0,
       zoneSqFt,
       corridorSqFt,
+      materialTravelFt,
       created_at: layout.created_at,
       updated_at: layout.updated_at,
       zones,
@@ -195,6 +247,22 @@ export async function exportComparativeAnalysis(projectId: string) {
       );
     }
   });
+
+  // Material travel distance finding
+  const travelDistances = layoutAnalyses.map(la => ({ name: la.name, ft: la.materialTravelFt }));
+  const hasAnyTravel = travelDistances.some(t => t.ft > 0);
+  if (hasAnyTravel && travelDistances.length > 1) {
+    const sorted = [...travelDistances].sort((a, b) => a.ft - b.ft);
+    const shortest = sorted[0];
+    const longest = sorted[sorted.length - 1];
+    if (shortest.ft !== longest.ft) {
+      const savings = longest.ft - shortest.ft;
+      const pctSavings = longest.ft > 0 ? Math.round((savings / longest.ft) * 100) : 0;
+      findings.push(
+        `<strong>Material Travel Distance:</strong> ${shortest.name} has the shortest weighted path at ${shortest.ft.toLocaleString()} ${unit} vs. ${longest.name} at ${longest.ft.toLocaleString()} ${unit} — a ${pctSavings}% reduction (${savings.toLocaleString()} ${unit} shorter).`
+      );
+    }
+  }
 
   // ── Factor comparison rows ──
   const factorRows = factorNames.map((fname, fi) => {
