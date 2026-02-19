@@ -9,7 +9,6 @@ import { FloorSettings } from './FloorSettings';
 import { PaintModeControls } from './PaintModeControls';
 import { ObjectLibrary } from './ObjectLibrary';
 import { ActivityZoneDrawer } from './ActivityZoneDrawer';
-import { ActivityZonePopup } from './ActivityZonePopup';
 import { CorridorPopup } from './CorridorPopup';
 import CorridorDrawingPanel from './CorridorDrawingPanel';
 import { FlowPathDrawer } from './FlowPathDrawer';
@@ -266,7 +265,6 @@ export function StepRouter({
 
   return (
     <>
-      {currentSubStep === '2f' && <ActivityZonePopup />}
       {currentSubStep === '2f' && <CorridorPopup />}
 
       <div className="flex h-full w-full relative">
