@@ -74,6 +74,14 @@ export function ObjectLibrary() {
     setDraggingObject(object);
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData('application/json', JSON.stringify(object));
+
+    // Replace the default drag ghost with a transparent 1×1 image so it
+    // doesn't obscure the grid. The on-grid preview rectangle already
+    // shows the user what they're placing and where.
+    const blank = document.createElement('canvas');
+    blank.width = 1;
+    blank.height = 1;
+    e.dataTransfer.setDragImage(blank, 0, 0);
   };
 
   const handleDragEnd = () => {
