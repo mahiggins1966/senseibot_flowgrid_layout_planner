@@ -57,17 +57,30 @@ function App() {
       loadVolumeTiming();
       loadActivityRelationships();
 
-      // Load dismissed flags for this layout
+      // Load dismissed flags and flow paths for this layout
       const layoutId = useGridStore.getState().activeLayoutId;
       if (layoutId) {
         supabase
           .from('layouts')
-          .select('dismissed_flags')
+          .select('dismissed_flags, flow_paths')
           .eq('id', layoutId)
           .single()
           .then(({ data }) => {
             if (data?.dismissed_flags && Array.isArray(data.dismissed_flags)) {
               useGridStore.setState({ dismissedFlags: new Set(data.dismissed_flags) });
+            }
+            // Apply layout-specific flow paths to doors
+            if (data?.flow_paths) {
+              const flowPaths = data.flow_paths as Record<string, Array<{ x: number; y: number }>>;
+              const doors = useGridStore.getState().doors;
+              for (const door of doors) {
+                const inKey = `${door.id}_inbound`;
+                const outKey = `${door.id}_outbound`;
+                useGridStore.getState().updateDoor(door.id, {
+                  inbound_flow_points: flowPaths[inKey] || null,
+                  outbound_flow_points: flowPaths[outKey] || null,
+                } as any);
+              }
             }
           });
       }
@@ -108,6 +121,15 @@ function App() {
     // Switch to the new layout
     setActiveLayout(layout.id);
     setCurrentSubStep('2f');
+
+    // Clear flow paths from doors in memory (new layout has none)
+    const currentDoors = useGridStore.getState().doors;
+    for (const door of currentDoors) {
+      useGridStore.getState().updateDoor(door.id, {
+        inbound_flow_points: null,
+        outbound_flow_points: null,
+      } as any);
+    }
 
     // Reload data for new layout (foundation stays, layout data resets)
     loadSettings();

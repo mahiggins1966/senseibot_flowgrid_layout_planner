@@ -22,22 +22,54 @@ export function FlowPathDrawer() {
 
   const [isOpen, setIsOpen] = useState(true);
 
-  // Ensure doors are loaded (they may not be if user navigated directly to layout step)
+  // Ensure doors are loaded and flow paths are applied from layout
   useEffect(() => {
-    const loadDoors = async () => {
-      const { activeProjectId } = useGridStore.getState();
-      const { data, error } = await supabase
-        .from('doors')
-        .select('*')
-        .eq('project_id', activeProjectId)
-        .order('created_at', { ascending: true });
-      if (!error && data) {
-        useGridStore.getState().setDoors(data as Door[]);
+    const loadDoorsAndFlowPaths = async () => {
+      const { activeProjectId, activeLayoutId } = useGridStore.getState();
+      
+      // Load doors if needed
+      let currentDoors = useGridStore.getState().doors;
+      if (currentDoors.length === 0 && activeProjectId) {
+        const { data, error } = await supabase
+          .from('doors')
+          .select('*')
+          .eq('project_id', activeProjectId)
+          .order('created_at', { ascending: true });
+        if (!error && data) {
+          currentDoors = data as Door[];
+          useGridStore.getState().setDoors(currentDoors);
+        }
+      }
+
+      // Load layout-specific flow paths and apply to doors in memory
+      if (activeLayoutId && currentDoors.length > 0) {
+        const { data: layoutData } = await supabase
+          .from('layouts')
+          .select('flow_paths')
+          .eq('id', activeLayoutId)
+          .single();
+
+        const flowPaths = layoutData?.flow_paths || {};
+        
+        for (const door of currentDoors) {
+          const inboundKey = `${door.id}_inbound`;
+          const outboundKey = `${door.id}_outbound`;
+          const inboundPoints = flowPaths[inboundKey] || null;
+          const outboundPoints = flowPaths[outboundKey] || null;
+          
+          // Only update if different from current
+          if (JSON.stringify(door.inbound_flow_points) !== JSON.stringify(inboundPoints) ||
+              JSON.stringify(door.outbound_flow_points) !== JSON.stringify(outboundPoints)) {
+            useGridStore.getState().updateDoor(door.id, {
+              inbound_flow_points: inboundPoints,
+              outbound_flow_points: outboundPoints,
+            } as any);
+          }
+        }
       }
     };
-    if (doors.length === 0) {
-      loadDoors();
-    }
+
+    loadDoorsAndFlowPaths();
   }, []);
 
   const materialDoors = doors.filter(d => d.has_inbound_material || d.has_outbound_material);
@@ -60,12 +92,28 @@ export function FlowPathDrawer() {
   };
 
   const handleClearFlowPath = async (door: Door, direction: 'inbound' | 'outbound') => {
-    const field = direction === 'inbound' ? 'inbound_flow_points' : 'outbound_flow_points';
+    const { activeLayoutId } = useGridStore.getState();
+    if (!activeLayoutId) return;
+
+    // Read current flow_paths from layout
+    const { data: layoutData } = await supabase
+      .from('layouts')
+      .select('flow_paths')
+      .eq('id', activeLayoutId)
+      .single();
+
+    const flowPaths = layoutData?.flow_paths || {};
+    const key = `${door.id}_${direction}`;
+    delete flowPaths[key];
+
+    // Save back to layout
     const { error } = await supabase
-      .from('doors')
-      .update({ [field]: null })
-      .eq('id', door.id);
+      .from('layouts')
+      .update({ flow_paths: flowPaths })
+      .eq('id', activeLayoutId);
+
     if (!error) {
+      const field = direction === 'inbound' ? 'inbound_flow_points' : 'outbound_flow_points';
       updateDoor(door.id, { [field]: null } as any);
     }
   };

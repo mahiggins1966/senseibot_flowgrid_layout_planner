@@ -552,16 +552,30 @@ export function GridCanvas() {
 
     const points = waypoints.map(wp => ({ x: wp.col, y: wp.row }));
     const field = flowPathDirection === 'inbound' ? 'inbound_flow_points' : 'outbound_flow_points';
+    const { activeLayoutId } = useGridStore.getState();
 
-    const { error } = await supabase
-      .from('doors')
-      .update({ [field]: points })
-      .eq('id', flowPathDoorId);
+    if (activeLayoutId) {
+      // Save to layout-specific flow_paths
+      const { data: layoutData } = await supabase
+        .from('layouts')
+        .select('flow_paths')
+        .eq('id', activeLayoutId)
+        .single();
 
-    if (!error) {
-      updateDoor(flowPathDoorId, { [field]: points } as any);
-    } else {
-      console.error('Error saving flow path:', error);
+      const flowPaths = layoutData?.flow_paths || {};
+      const key = `${flowPathDoorId}_${flowPathDirection}`;
+      flowPaths[key] = points;
+
+      const { error } = await supabase
+        .from('layouts')
+        .update({ flow_paths: flowPaths })
+        .eq('id', activeLayoutId);
+
+      if (!error) {
+        updateDoor(flowPathDoorId, { [field]: points } as any);
+      } else {
+        console.error('Error saving flow path:', error);
+      }
     }
 
     cancelDrawingFlowPath();
