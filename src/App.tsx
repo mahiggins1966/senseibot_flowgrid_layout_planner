@@ -46,6 +46,8 @@ function App() {
     setActiveProject(projectId);
     setActiveLayout(layoutId);
     setCurrentSubStep(startStep || '2a');
+    // Reset flow overlay to OFF — layout-specific paths loaded in useEffect
+    useGridStore.setState({ flowOverlayEnabled: false });
     setView('editor');
   };
 
@@ -59,30 +61,41 @@ function App() {
 
       // Load dismissed flags and flow paths for this layout
       const layoutId = useGridStore.getState().activeLayoutId;
+      const projectId = useGridStore.getState().activeProjectId;
       if (layoutId) {
-        supabase
-          .from('layouts')
-          .select('dismissed_flags, flow_paths')
-          .eq('id', layoutId)
-          .single()
-          .then(({ data }) => {
-            if (data?.dismissed_flags && Array.isArray(data.dismissed_flags)) {
-              useGridStore.setState({ dismissedFlags: new Set(data.dismissed_flags) });
-            }
-            // Apply layout-specific flow paths to doors
-            if (data?.flow_paths) {
-              const flowPaths = data.flow_paths as Record<string, Array<{ x: number; y: number }>>;
-              const doors = useGridStore.getState().doors;
-              for (const door of doors) {
-                const inKey = `${door.id}_inbound`;
-                const outKey = `${door.id}_outbound`;
+        // Load layout data (flags + flow paths) and doors in parallel, then apply
+        Promise.all([
+          supabase.from('layouts').select('dismissed_flags, flow_paths').eq('id', layoutId).single(),
+          supabase.from('doors').select('*').eq('project_id', projectId).order('created_at', { ascending: true }),
+        ]).then(([layoutRes, doorsRes]) => {
+          // Apply dismissed flags
+          if (layoutRes.data?.dismissed_flags && Array.isArray(layoutRes.data.dismissed_flags)) {
+            useGridStore.setState({ dismissedFlags: new Set(layoutRes.data.dismissed_flags) });
+          }
+
+          // Set doors first (with flow points cleared)
+          if (doorsRes.data) {
+            const cleanDoors = doorsRes.data.map((d: any) => ({
+              ...d,
+              inbound_flow_points: null,
+              outbound_flow_points: null,
+            }));
+            useGridStore.getState().setDoors(cleanDoors);
+
+            // Then apply layout-specific flow paths
+            const flowPaths = (layoutRes.data?.flow_paths || {}) as Record<string, Array<{ x: number; y: number }>>;
+            for (const door of cleanDoors) {
+              const inKey = `${door.id}_inbound`;
+              const outKey = `${door.id}_outbound`;
+              if (flowPaths[inKey] || flowPaths[outKey]) {
                 useGridStore.getState().updateDoor(door.id, {
                   inbound_flow_points: flowPaths[inKey] || null,
                   outbound_flow_points: flowPaths[outKey] || null,
                 } as any);
               }
             }
-          });
+          }
+        });
       }
     }
   }, [view, loadSettings, loadActivities, loadVolumeTiming, loadActivityRelationships]);
@@ -122,7 +135,8 @@ function App() {
     setActiveLayout(layout.id);
     setCurrentSubStep('2f');
 
-    // Clear flow paths from doors in memory (new layout has none)
+    // Reset flow overlay to OFF and clear flow paths from doors in memory (new layout has none)
+    useGridStore.setState({ flowOverlayEnabled: false });
     const currentDoors = useGridStore.getState().doors;
     for (const door of currentDoors) {
       useGridStore.getState().updateDoor(door.id, {
@@ -190,7 +204,7 @@ function App() {
         </button>
       )}
 
-      {needsGrid && (
+      {currentSubStep === '2f' && (
         <button
           onClick={toggleFlowOverlay}
           className={`absolute top-14 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-lg border text-xs font-semibold transition-colors ${
