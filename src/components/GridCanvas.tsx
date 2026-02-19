@@ -1912,96 +1912,6 @@ export function GridCanvas() {
             );
           })()}
 
-          {placedObjects.map((object) => {
-            const isBeingRepositioned = repositioningObject?.id === object.id;
-            return (
-              <g
-                key={object.id}
-                onClick={(e) => handleObjectClick(e, object)}
-                style={{
-                  opacity: isBeingRepositioned ? 0.3 : 1,
-                  cursor: 'move',
-                  pointerEvents: (isDrawingCorridor || isDrawingFlowPath) ? 'none' : 'auto',
-                }}
-              >
-                <rect
-                  x={MARGIN + object.grid_x * CELL_SIZE}
-                  y={MARGIN + object.grid_y * CELL_SIZE}
-                  width={object.grid_width * CELL_SIZE}
-                  height={object.grid_height * CELL_SIZE}
-                  fill={object.color}
-                  stroke="#374151"
-                  strokeWidth="2"
-                  opacity="0.9"
-                  onMouseMove={(e) => {
-                    if (!svgRef.current) return;
-                    const { row, col } = screenToGrid(e.clientX, e.clientY);
-                    if (col >= 0 && row >= 0 && col < gridDimensions.cols && row < gridDimensions.rows) {
-                      const coordinate = getGridCoordinate(row, col);
-                      setHoveredSquare({ row, col, label: coordinate.label });
-                    }
-                  }}
-                  onMouseDown={(e) => handleObjectMouseDown(e, object)}
-                  onMouseUp={(e) => handleObjectMouseUp(e, object)}
-                  onDragStart={handleObjectDragStart}
-                  className={repositioningObject?.id === object.id ? "cursor-grabbing" : "cursor-pointer"}
-                />
-                {/* Hover tooltip — name badge above object */}
-                {hoveredSquare && !isDraggingObject && (() => {
-                  const objLeft = object.grid_x;
-                  const objRight = object.grid_x + object.grid_width - 1;
-                  const objTop = object.grid_y;
-                  const objBottom = object.grid_y + object.grid_height - 1;
-                  const isHovered = hoveredSquare.row >= objTop && hoveredSquare.row <= objBottom &&
-                    hoveredSquare.col >= objLeft && hoveredSquare.col <= objRight;
-                  if (!isHovered) return null;
-                  const tooltipX = MARGIN + object.grid_x * CELL_SIZE + (object.grid_width * CELL_SIZE) / 2;
-                  const tooltipY = MARGIN + object.grid_y * CELL_SIZE - 8;
-                  const textLen = object.object_name.length * 8.5 + 20;
-                  return (
-                    <g className="pointer-events-none">
-                      <rect
-                        x={tooltipX - textLen / 2}
-                        y={tooltipY - 22}
-                        width={textLen}
-                        height={26}
-                        rx="5"
-                        fill="#1F2937"
-                        opacity="0.9"
-                      />
-                      <text
-                        x={tooltipX}
-                        y={tooltipY - 9}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontSize="14"
-                        fontWeight="600"
-                        fill="white"
-                        className="select-none"
-                      >
-                        {object.object_name}
-                      </text>
-                    </g>
-                  );
-                })()}
-
-                {originalPosition && repositioningObject?.id === object.id && (
-                  <rect
-                    x={MARGIN + originalPosition.x * CELL_SIZE}
-                    y={MARGIN + originalPosition.y * CELL_SIZE}
-                    width={object.grid_width * CELL_SIZE}
-                    height={object.grid_height * CELL_SIZE}
-                    fill="none"
-                    stroke="#94a3b8"
-                    strokeWidth="2"
-                    strokeDasharray="5,5"
-                    className="pointer-events-none"
-                  />
-                )}
-              </g>
-            );
-          })}
-
           {corridors.map((corridor) => {
             // Use points array (guaranteed by auto-migration on load)
             const pts = corridor.points && corridor.points.length >= 2
@@ -2092,6 +2002,96 @@ export function GridCanvas() {
                 })}
 
 
+              </g>
+            );
+          })}
+
+          {placedObjects.map((object) => {
+            const isBeingRepositioned = repositioningObject?.id === object.id;
+            return (
+              <g
+                key={object.id}
+                onClick={(e) => handleObjectClick(e, object)}
+                style={{
+                  opacity: isBeingRepositioned ? 0.3 : 1,
+                  cursor: 'move',
+                  pointerEvents: (isDrawingCorridor || isDrawingFlowPath) ? 'none' : 'auto',
+                }}
+              >
+                <rect
+                  x={MARGIN + object.grid_x * CELL_SIZE}
+                  y={MARGIN + object.grid_y * CELL_SIZE}
+                  width={object.grid_width * CELL_SIZE}
+                  height={object.grid_height * CELL_SIZE}
+                  fill={object.color}
+                  stroke="#374151"
+                  strokeWidth="2"
+                  opacity="0.9"
+                  onMouseMove={(e) => {
+                    if (!svgRef.current) return;
+                    const { row, col } = screenToGrid(e.clientX, e.clientY);
+                    if (col >= 0 && row >= 0 && col < gridDimensions.cols && row < gridDimensions.rows) {
+                      const coordinate = getGridCoordinate(row, col);
+                      setHoveredSquare({ row, col, label: coordinate.label });
+                    }
+                  }}
+                  onMouseDown={(e) => handleObjectMouseDown(e, object)}
+                  onMouseUp={(e) => handleObjectMouseUp(e, object)}
+                  onDragStart={handleObjectDragStart}
+                  className={repositioningObject?.id === object.id ? "cursor-grabbing" : "cursor-pointer"}
+                />
+                {/* Hover tooltip — name badge above object */}
+                {hoveredSquare && !isDraggingObject && (() => {
+                  const objLeft = object.grid_x;
+                  const objRight = object.grid_x + object.grid_width - 1;
+                  const objTop = object.grid_y;
+                  const objBottom = object.grid_y + object.grid_height - 1;
+                  const isHovered = hoveredSquare.row >= objTop && hoveredSquare.row <= objBottom &&
+                    hoveredSquare.col >= objLeft && hoveredSquare.col <= objRight;
+                  if (!isHovered) return null;
+                  const tooltipX = MARGIN + object.grid_x * CELL_SIZE + (object.grid_width * CELL_SIZE) / 2;
+                  const tooltipY = MARGIN + object.grid_y * CELL_SIZE - 8;
+                  const textLen = object.object_name.length * 8.5 + 20;
+                  return (
+                    <g className="pointer-events-none">
+                      <rect
+                        x={tooltipX - textLen / 2}
+                        y={tooltipY - 22}
+                        width={textLen}
+                        height={26}
+                        rx="5"
+                        fill="#1F2937"
+                        opacity="0.9"
+                      />
+                      <text
+                        x={tooltipX}
+                        y={tooltipY - 9}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize="14"
+                        fontWeight="600"
+                        fill="white"
+                        className="select-none"
+                      >
+                        {object.object_name}
+                      </text>
+                    </g>
+                  );
+                })()}
+
+                {originalPosition && repositioningObject?.id === object.id && (
+                  <rect
+                    x={MARGIN + originalPosition.x * CELL_SIZE}
+                    y={MARGIN + originalPosition.y * CELL_SIZE}
+                    width={object.grid_width * CELL_SIZE}
+                    height={object.grid_height * CELL_SIZE}
+                    fill="none"
+                    stroke="#94a3b8"
+                    strokeWidth="2"
+                    strokeDasharray="5,5"
+                    className="pointer-events-none"
+                  />
+                )}
               </g>
             );
           })}
