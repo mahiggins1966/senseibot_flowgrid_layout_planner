@@ -2,23 +2,19 @@ import { useState, useEffect } from 'react';
 import { useGridStore } from '../store/gridStore';
 import { supabase } from '../lib/supabase';
 import { Trash2, X, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, EyeOff } from 'lucide-react';
-import { ZoneGroupType, LabelAlign } from '../types';
+import { LabelAlign } from '../types';
 
 export function ZoneEditor() {
-  const { selectedZone, setSelectedZone, updateZone, deleteZone, canInteractWithZones } = useGridStore();
+  const { selectedZone, setSelectedZone, updateZone, deleteZone, canInteractWithZones, settings } = useGridStore();
   const [formData, setFormData] = useState({
-    name: selectedZone?.name || '',
     color: selectedZone?.color || '#3B82F6',
-    group_type: selectedZone?.group_type || 'flexible',
     label_align: (selectedZone?.label_align || 'center') as LabelAlign,
   });
 
   useEffect(() => {
     if (selectedZone) {
       setFormData({
-        name: selectedZone.name,
         color: selectedZone.color,
-        group_type: selectedZone.group_type,
         label_align: selectedZone.label_align || 'center',
       });
     }
@@ -29,9 +25,7 @@ export function ZoneEditor() {
   const handleSave = async () => {
     if (!canInteractWithZones()) return;
     const updates = {
-      name: formData.name,
       color: formData.color,
-      group_type: formData.group_type as ZoneGroupType,
       label_align: formData.label_align as LabelAlign,
     };
 
@@ -51,6 +45,8 @@ export function ZoneEditor() {
 
   const handleDelete = async () => {
     if (!canInteractWithZones()) return;
+    if (!confirm('Delete this zone? You can redraw it later.')) return;
+
     const { error } = await supabase
       .from('zones')
       .delete()
@@ -68,90 +64,43 @@ export function ZoneEditor() {
     setSelectedZone(null);
   };
 
-  const getGroupColor = (type: string) => {
-    switch (type) {
-      case 'permanent':
-        return '#374151';
-      case 'semi-fixed':
-        return '#6B7280';
-      case 'flexible':
-        return formData.color;
-      default:
-        return formData.color;
-    }
-  };
+  const totalSquares = selectedZone.grid_width * selectedZone.grid_height;
+  const sqFt = totalSquares * settings.squareSize * settings.squareSize;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Edit Zone
-          </h3>
+    <div className="fixed inset-0 z-50" onClick={handleClose}>
+      <div
+        className="absolute top-1/2 right-4 -translate-y-1/2 bg-white rounded-lg shadow-xl border border-gray-200 w-72"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">Zone</div>
+            <div className="text-base font-semibold text-gray-900 truncate">{selectedZone.name}</div>
+          </div>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 ml-2 flex-shrink-0"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+        <div className="px-4 pb-4 space-y-3">
+          {/* Info row */}
+          <div className="flex gap-2 text-xs text-gray-500">
+            <span>{selectedZone.grid_width}×{selectedZone.grid_height}</span>
+            <span>·</span>
+            <span>{totalSquares} sq</span>
+            <span>·</span>
+            <span>{sqFt.toLocaleString()} ft²</span>
           </div>
 
+          {/* Label Position */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Group
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => setFormData({ ...formData, group_type: 'permanent' })}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  formData.group_type === 'permanent'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Permanent
-              </button>
-              <button
-                onClick={() => setFormData({ ...formData, group_type: 'semi-fixed' })}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  formData.group_type === 'semi-fixed'
-                    ? 'bg-gray-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Semi-Fixed
-              </button>
-              <button
-                onClick={() => setFormData({ ...formData, group_type: 'flexible' })}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  formData.group_type === 'flexible'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Flexible
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Label Position
-            </label>
-            <div className="grid grid-cols-4 gap-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Label Position</label>
+            <div className="grid grid-cols-4 gap-1.5">
               {[
                 { value: 'top' as LabelAlign, label: 'Top', icon: AlignVerticalJustifyStart },
                 { value: 'center' as LabelAlign, label: 'Center', icon: AlignVerticalJustifyCenter },
@@ -161,65 +110,43 @@ export function ZoneEditor() {
                 <button
                   key={value}
                   onClick={() => setFormData({ ...formData, label_align: value })}
-                  className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  className={`flex flex-col items-center gap-0.5 px-1.5 py-1.5 rounded text-xs font-medium transition-colors ${
                     formData.label_align === value
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   {label}
                 </button>
               ))}
             </div>
           </div>
 
-          {formData.group_type === 'flexible' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Color
-              </label>
-              <input
-                type="color"
-                value={formData.color}
-                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                className="w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
-              />
-            </div>
-          )}
-
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">
-              Position: {selectedZone.grid_x}, {selectedZone.grid_y}
-            </p>
-            <p className="text-sm text-gray-600">
-              Size: {selectedZone.grid_width} × {selectedZone.grid_height} squares
-            </p>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-sm text-gray-600">Preview:</span>
-              <div
-                className="w-8 h-8 rounded border-2"
-                style={{
-                  backgroundColor: getGroupColor(formData.group_type),
-                  borderColor: getGroupColor(formData.group_type),
-                  opacity: 0.5,
-                }}
-              />
-            </div>
+          {/* Color */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">Color</label>
+            <input
+              type="color"
+              value={formData.color}
+              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+              className="w-full h-8 border border-gray-300 rounded cursor-pointer"
+            />
           </div>
 
-          <div className="flex gap-2">
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
             <button
               onClick={handleSave}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
             >
-              Save Changes
+              Save
             </button>
             <button
               onClick={handleDelete}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
-              <Trash2 className="w-5 h-5" />
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         </div>
