@@ -104,7 +104,7 @@ export function exportSetupInstructions(data: SetupData) {
     const typeLabel = c.type === 'pedestrian' ? 'Pedestrian Walkway' : 'Forklift / Cart Path';
     const tapeColor = c.type === 'pedestrian' ? 'Yellow' : 'White';
     const tapeWidth = c.type === 'forklift' ? '4"' : '2"';
-    const direction = isHorizontal ? 'east (→)' : 'south (↓)';
+    const direction = isHorizontal ? 'right (→)' : 'down (↓)';
     return { corridor: c, idx: i + 1, startCoord, endCoord, startXFt, startYFt, lengthFt, widthFt, typeLabel, tapeColor, tapeWidth, direction, isHorizontal };
   });
 
@@ -164,12 +164,12 @@ export function exportSetupInstructions(data: SetupData) {
     `Locate the <strong>top-left corner</strong> of the facility floor area. This is your reference origin — all measurements start here.`,
     `Mark this point clearly on the floor with a chalk "X" or a piece of painter's tape labeled <span class="coords">DATUM (0, 0)</span>.`,
     `This corresponds to grid position <span class="coords">A1</span> on the layout plan.`,
-  ], 'tip', 'All distances in this document are measured from this datum point: east (→) is to the right, south (↓) is downward when facing the facility.');
+  ], 'tip', 'All distances in this document are measured from this datum point: right (→) along the width, down (↓) along the depth.');
 
   // Step: Snap baseline grid lines
   stepsHtml += buildStepCard(step(), 'Snap Baseline Reference Lines', [
-    `From the datum, snap a chalk line running <strong>${data.facilityWidth} ft east (→)</strong> along the top wall. This is your X-axis baseline.`,
-    `From the datum, snap a chalk line running <strong>${data.facilityHeight} ft south (↓)</strong> along the left wall. This is your Y-axis baseline.`,
+    `From the datum, snap a chalk line running <strong>${data.facilityWidth} ft to the right (→)</strong> along the top wall. This is your X-axis baseline.`,
+    `From the datum, snap a chalk line running <strong>${data.facilityHeight} ft down (↓)</strong> along the left wall. This is your Y-axis baseline.`,
     `Verify the corner is square: use a laser level or measure the 3-4-5 triangle method — mark 3 ft along one line, 4 ft along the other, and confirm the diagonal is exactly 5 ft.`,
     `<em>Optional:</em> Snap intermediate chalk lines every ${sq * 5} ft (every 5 grid squares) to create a reference grid for faster zone layout.`,
   ]);
@@ -182,7 +182,7 @@ export function exportSetupInstructions(data: SetupData) {
     doorRows.forEach(d => {
       doorSteps.push(
         `<strong>Door ${d.idx}</strong> — ${d.door.wall} wall at <span class="coords">${d.coord.label}</span>: ` +
-        `${d.xFt} ft east, ${d.yFt} ft south from datum. Opening width: ${d.widthFt} ft. ` +
+        `${d.xFt} ft right, ${d.yFt} ft down from datum. Opening width: ${d.widthFt} ft. ` +
         `Access: ${d.features.length > 0 ? d.features.join(', ') : 'General'}. ` +
         `Mark a <strong>36" keep-clear zone</strong> in front of this door with red tape.`
       );
@@ -197,10 +197,10 @@ export function exportSetupInstructions(data: SetupData) {
     const tc = getTapeColorForType(z.activity?.type || '');
 
     const substeps = [
-      `<strong>Locate the starting corner:</strong> From the datum (0, 0), measure <strong>${z.xFt} ft east (→)</strong> and <strong>${z.yFt} ft south (↓)</strong>. Mark this point — it is the <strong>top-left corner</strong> of the zone at grid position <span class="coords">${z.startCoord.label}</span>.`,
-      `<strong>Mark the width:</strong> From that corner, measure <strong>${z.widthFt} ft east (→)</strong>. Mark the endpoint and snap a chalk line between the two points. This is the <strong>top edge</strong> of the zone.`,
-      `<strong>Mark the height:</strong> Return to the starting corner. Measure <strong>${z.heightFt} ft south (↓)</strong>. Mark the endpoint and snap a chalk line. This is the <strong>left edge</strong> of the zone.`,
-      `<strong>Complete the rectangle:</strong> From the end of the top edge, measure ${z.heightFt} ft south (↓). From the end of the left edge, measure ${z.widthFt} ft east (→). These two points should meet at <span class="coords">${z.endCoord.label}</span> — the bottom-right corner. Snap chalk lines for the right and bottom edges.`,
+      `<strong>Locate the starting corner:</strong> From the datum (0, 0), measure <strong>${z.xFt} ft to the right (→)</strong> and <strong>${z.yFt} ft down (↓)</strong>. Mark this point — it is the <strong>top-left corner</strong> of the zone at grid position <span class="coords">${z.startCoord.label}</span>.`,
+      `<strong>Mark the width:</strong> From that corner, measure <strong>${z.widthFt} ft to the right (→)</strong>. Mark the endpoint and snap a chalk line between the two points. This is the <strong>top edge</strong> of the zone.`,
+      `<strong>Mark the height:</strong> Return to the starting corner. Measure <strong>${z.heightFt} ft down (↓)</strong>. Mark the endpoint and snap a chalk line. This is the <strong>left edge</strong> of the zone.`,
+      `<strong>Complete the rectangle:</strong> From the end of the top edge, measure ${z.heightFt} ft down (↓). From the end of the left edge, measure ${z.widthFt} ft to the right (→). These two points should meet at <span class="coords">${z.endCoord.label}</span> — the bottom-right corner. Snap chalk lines for the right and bottom edges.`,
       `<strong>Verify square:</strong> Check that both diagonals of the rectangle are equal length. If they differ by more than 1", adjust the corners.`,
       `<strong>Apply tape:</strong> Clean the floor along all four chalk lines (wipe with alcohol if greasy). Apply <strong>${tc.color} 2" floor marking tape</strong> on all four sides, pressing firmly.`,
       `<strong>Label:</strong> Write <strong>"${name}"</strong> on the tape at the zone entrance, or post a laminated sign.`,
@@ -212,16 +212,16 @@ export function exportSetupInstructions(data: SetupData) {
       `Mark Zone: "${name}" — ${type} (${z.widthFt} ft × ${z.heightFt} ft)`,
       substeps,
       'zone-summary',
-      `Grid: ${z.startCoord.label} → ${z.endCoord.label} &nbsp;|&nbsp; Position: ${z.xFt} ft east, ${z.yFt} ft south &nbsp;|&nbsp; Area: ${z.areaSqFt.toLocaleString()} sq ft &nbsp;|&nbsp; Tape: ${tc.color} 2"`
+      `Grid: ${z.startCoord.label} → ${z.endCoord.label} &nbsp;|&nbsp; Position: ${z.xFt} ft right, ${z.yFt} ft down &nbsp;|&nbsp; Area: ${z.areaSqFt.toLocaleString()} sq ft &nbsp;|&nbsp; Tape: ${tc.color} 2"`
     );
   });
 
   // Steps: Mark each corridor
   corridorRows.forEach(c => {
     const substeps = [
-      `<strong>Locate the starting point:</strong> From the datum (0, 0), measure <strong>${c.startXFt} ft east (→)</strong> and <strong>${c.startYFt} ft south (↓)</strong>. Mark this point at grid position <span class="coords">${c.startCoord.label}</span>.`,
+      `<strong>Locate the starting point:</strong> From the datum (0, 0), measure <strong>${c.startXFt} ft to the right (→)</strong> and <strong>${c.startYFt} ft down (↓)</strong>. Mark this point at grid position <span class="coords">${c.startCoord.label}</span>.`,
       `<strong>Mark the first edge:</strong> From that point, run a chalk line <strong>${c.lengthFt} ft ${c.direction}</strong> to the corridor end at <span class="coords">${c.endCoord.label}</span>.`,
-      `<strong>Mark the second edge:</strong> Offset <strong>${c.widthFt} ft</strong> ${c.isHorizontal ? 'south (↓)' : 'east (→)'} from the first edge and run a parallel chalk line the same length. These two lines define both edges of the corridor.`,
+      `<strong>Mark the second edge:</strong> Offset <strong>${c.widthFt} ft</strong> ${c.isHorizontal ? 'down (↓)' : 'to the right (→)'} from the first edge and run a parallel chalk line the same length. These two lines define both edges of the corridor.`,
       `<strong>Apply tape:</strong> Apply <strong>${c.tapeColor} ${c.tapeWidth} floor marking tape</strong> along <strong>both</strong> edges. Do NOT tape just the centerline — both edges must be marked.`,
       `At intersections with other corridors, stop the tape 2" short and leave a visible gap.`,
       `If this is a one-way path, add a directional arrow at the entry point using floor tape or a floor sign.`,
@@ -446,7 +446,7 @@ export function exportSetupInstructions(data: SetupData) {
       : `<div class="diagram-container" style="padding:40px; background:#f3f4f6; border-radius:8px; color:#6b7280;">Layout image not available — refer to the Floor Plan PDF export</div>`
     }
     <div class="tip">
-      <strong>Coordinate system:</strong> The top-left corner of the facility is the <strong>datum point (0, 0)</strong>, which corresponds to grid position <span class="coords">A1</span>. Distances are measured in feet: <strong>east (→)</strong> from the left wall, <strong>south (↓)</strong> from the top wall. Each grid square = ${sq} ft × ${sq} ft.
+      <strong>Coordinate system:</strong> The top-left corner of the facility is the <strong>datum point (0, 0)</strong>, which corresponds to grid position <span class="coords">A1</span>. Distances are measured in feet: <strong>right (→)</strong> from the left wall, <strong>down (↓)</strong> from the top wall. Each grid square = ${sq} ft × ${sq} ft.
     </div>
   </div>
 
