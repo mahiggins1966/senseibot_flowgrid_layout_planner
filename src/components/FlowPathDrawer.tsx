@@ -88,6 +88,8 @@ export function FlowPathDrawer() {
       cancelDrawingFlowPath();
       return;
     }
+    // Turn on flow overlay so user can see paths while drawing
+    useGridStore.setState({ flowOverlayEnabled: true });
     startDrawingFlowPath(door.id, direction);
   };
 
