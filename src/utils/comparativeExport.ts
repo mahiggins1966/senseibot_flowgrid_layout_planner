@@ -80,6 +80,8 @@ export async function exportComparativeAnalysis(projectId: string) {
       supabase.from('placed_objects').select('*').eq('layout_id', layout.id),
     ]);
 
+    const flowPaths = (layout.flow_paths || {}) as Record<string, Array<{ x: number; y: number }>>;
+
     const zones = (zonesRes.data || []) as Zone[];
     const corridors = (corridorsRes.data || []) as Corridor[];
 
@@ -106,6 +108,7 @@ export async function exportComparativeAnalysis(projectId: string) {
       squareSize: s.square_size,
       facilityWidth: s.facility_width,
       facilityHeight: s.facility_height,
+      flowPaths,
     });
 
     layoutAnalyses.push({

@@ -17,6 +17,7 @@ interface ThumbnailData {
   squareSize: number;
   facilityWidth: number;
   facilityHeight: number;
+  flowPaths?: Record<string, Array<{ x: number; y: number }>>;
 }
 
 const CELL = 10; // px per grid cell in thumbnail
@@ -102,6 +103,94 @@ export function generateLayoutSvg(data: ThumbnailData): string {
 
     svg += `<rect x="${x}" y="${y}" width="${dw}" height="${dh}" fill="${OSHA_COLORS.DOOR}" stroke="#78350f" stroke-width="0.5" rx="1"/>`;
   });
+
+  // Flow paths
+  if (data.flowPaths) {
+    const fp = data.flowPaths;
+
+    // Helper: convert grid points to SVG polyline
+    const pointsToPolyline = (pts: Array<{ x: number; y: number }>) => {
+      return pts.map(p => `${PAD + p.x * CELL + CELL / 2},${PAD + p.y * CELL + CELL / 2}`).join(' ');
+    };
+
+    // Inbound paths (blue)
+    doors.filter(d => d.has_inbound_material).forEach(door => {
+      const key = `${door.id}_inbound`;
+      const pts = fp[key];
+      if (pts && pts.length >= 2) {
+        svg += `<polyline points="${pointsToPolyline(pts)}" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="4,2" opacity="0.8"/>`;
+        // Arrowhead at last point
+        const last = pts[pts.length - 1];
+        const prev = pts[pts.length - 2];
+        const lx = PAD + last.x * CELL + CELL / 2;
+        const ly = PAD + last.y * CELL + CELL / 2;
+        const dx = last.x - prev.x;
+        const dy = last.y - prev.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const nx = dx / len;
+        const ny = dy / len;
+        svg += `<polygon points="${lx},${ly} ${lx - nx * 4 - ny * 2.5},${ly - ny * 4 + nx * 2.5} ${lx - nx * 4 + ny * 2.5},${ly - ny * 4 - nx * 2.5}" fill="#3b82f6" opacity="0.8"/>`;
+      }
+    });
+
+    // Outbound paths (orange)
+    doors.filter(d => d.has_outbound_material).forEach(door => {
+      const key = `${door.id}_outbound`;
+      const pts = fp[key];
+      if (pts && pts.length >= 2) {
+        svg += `<polyline points="${pointsToPolyline(pts)}" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="4,2" opacity="0.8"/>`;
+        // Arrowhead at last point
+        const last = pts[pts.length - 1];
+        const prev = pts[pts.length - 2];
+        const lx = PAD + last.x * CELL + CELL / 2;
+        const ly = PAD + last.y * CELL + CELL / 2;
+        const dx = last.x - prev.x;
+        const dy = last.y - prev.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const nx = dx / len;
+        const ny = dy / len;
+        svg += `<polygon points="${lx},${ly} ${lx - nx * 4 - ny * 2.5},${ly - ny * 4 + nx * 2.5} ${lx - nx * 4 + ny * 2.5},${ly - ny * 4 - nx * 2.5}" fill="#f97316" opacity="0.8"/>`;
+      }
+    });
+
+    // Process flow arrows (zone centroid to centroid) — dashed gray
+    const sequenced = activities
+      .filter(a => a.sequence_order != null && (a.sequence_order as number) > 0)
+      .sort((a, b) => ((a.sequence_order as number) || 0) - ((b.sequence_order as number) || 0));
+
+    const seqGroups = new Map<number, { cx: number; cy: number }>();
+    for (const act of sequenced) {
+      const actZones = zones.filter(z => z.activity_id === act.id);
+      if (actZones.length === 0) continue;
+      const seq = act.sequence_order as number;
+      if (!seqGroups.has(seq)) {
+        let cx = 0, cy = 0;
+        for (const z of actZones) {
+          cx += z.grid_x + z.grid_width / 2;
+          cy += z.grid_y + z.grid_height / 2;
+        }
+        seqGroups.set(seq, { cx: cx / actZones.length, cy: cy / actZones.length });
+      }
+    }
+
+    const sortedSeqs = Array.from(seqGroups.keys()).sort((a, b) => a - b);
+    for (let i = 0; i < sortedSeqs.length - 1; i++) {
+      const from = seqGroups.get(sortedSeqs[i])!;
+      const to = seqGroups.get(sortedSeqs[i + 1])!;
+      const fx = PAD + from.cx * CELL;
+      const fy = PAD + from.cy * CELL;
+      const tx = PAD + to.cx * CELL;
+      const ty = PAD + to.cy * CELL;
+      svg += `<line x1="${fx}" y1="${fy}" x2="${tx}" y2="${ty}" stroke="#64748b" stroke-width="1" stroke-dasharray="3,2" opacity="0.6"/>`;
+      // Small arrowhead
+      const dx = tx - fx;
+      const dy = ty - fy;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const nx = dx / len;
+      const ny = dy / len;
+      svg += `<polygon points="${tx},${ty} ${tx - nx * 3.5 - ny * 2},${ty - ny * 3.5 + nx * 2} ${tx - nx * 3.5 + ny * 2},${ty - ny * 3.5 - nx * 2}" fill="#64748b" opacity="0.6"/>`;
+    }
+  }
 
   svg += '</svg>';
   return svg;
