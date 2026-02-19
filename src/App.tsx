@@ -28,10 +28,14 @@ function App() {
   const [view, setView] = useState<AppView>('home');
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [currentSubStep, setCurrentSubStep] = useState<SubStep>('2a');
-  const [gridHelpDismissed, setGridHelpDismissed] = useState(false);
+  const [gridHelpDismissed, setGridHelpDismissed] = useState(true);
 
   useEffect(() => {
     setStoreSubStep(currentSubStep);
+    // Turn off flow overlay when leaving layout page
+    if (currentSubStep !== '2f') {
+      useGridStore.setState({ flowOverlayEnabled: false });
+    }
   }, [currentSubStep, setStoreSubStep]);
 
   // Home → Dashboard
@@ -197,10 +201,10 @@ function App() {
       {needsGrid && gridHelpDismissed && (
         <button
           onClick={() => setGridHelpDismissed(false)}
-          className="absolute top-14 left-[340px] z-40 w-7 h-7 flex items-center justify-center bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-white transition-colors text-sm font-semibold"
+          className="absolute top-14 left-[340px] z-40 flex items-center px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-white transition-colors text-xs font-semibold"
           title="Show grid controls"
         >
-          ?
+          Grid Controls
         </button>
       )}
 
@@ -212,7 +216,7 @@ function App() {
               ? 'bg-slate-700 text-white border-slate-600 hover:bg-slate-800'
               : 'bg-white/95 backdrop-blur-sm text-gray-500 border-gray-200 hover:text-gray-800 hover:bg-white'
           }`}
-          style={{ left: gridHelpDismissed ? '380px' : '615px' }}
+          style={{ left: gridHelpDismissed ? '470px' : '615px' }}
           title="Toggle material flow overlay"
         >
           <Route className="w-3.5 h-3.5" />
