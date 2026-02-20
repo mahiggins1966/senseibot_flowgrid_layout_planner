@@ -8,6 +8,7 @@ import { ZoneEditor } from './components/ZoneEditor';
 import { useGridStore } from './store/gridStore';
 import { supabase } from './lib/supabase';
 import { Route } from 'lucide-react';
+import { CONSUSONE_LOGO } from './constants/branding';
 
 type SubStep = '2a' | '2b' | '2c' | '2d' | '2e' | '2f';
 type AppView = 'home' | 'dashboard' | 'editor';
@@ -181,6 +182,17 @@ function App() {
 
   return (
     <div className="w-screen h-screen flex flex-col overflow-hidden">
+      {/* Brand header */}
+      <div className="bg-white border-b border-gray-100 px-4 py-2 flex items-center">
+        <div className="w-56">
+          <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-11" />
+        </div>
+        <div className="flex-1 text-center">
+          <h1 className="text-xl font-bold text-gray-900">FlowGrid Layout Planner</h1>
+        </div>
+        <div className="w-56" />
+      </div>
+
       <StepBar
         currentSubStep={currentSubStep}
         onSubStepChange={handleSubStepChange}
@@ -201,7 +213,7 @@ function App() {
       {needsGrid && gridHelpDismissed && (
         <button
           onClick={() => setGridHelpDismissed(false)}
-          className="absolute top-14 left-[340px] z-40 flex items-center px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-white transition-colors text-xs font-semibold"
+          className="absolute top-[7.5rem] left-[340px] z-40 flex items-center px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-white transition-colors text-xs font-semibold"
           title="Show grid controls"
         >
           Grid Controls
@@ -211,7 +223,7 @@ function App() {
       {currentSubStep === '2f' && (
         <button
           onClick={toggleFlowOverlay}
-          className={`absolute top-14 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-lg border text-xs font-semibold transition-colors ${
+          className={`absolute top-[7.5rem] z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-lg border text-xs font-semibold transition-colors ${
             flowOverlayEnabled
               ? 'bg-slate-700 text-white border-slate-600 hover:bg-slate-800'
               : 'bg-white/95 backdrop-blur-sm text-gray-500 border-gray-200 hover:text-gray-800 hover:bg-white'
@@ -225,7 +237,7 @@ function App() {
       )}
 
       {needsGrid && !gridHelpDismissed && (
-        <div className="absolute top-14 left-[340px] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-4 py-3 text-xs text-gray-700 border border-gray-200 z-40" style={{ maxWidth: '260px' }}>
+        <div className="absolute top-[7.5rem] left-[340px] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-4 py-3 text-xs text-gray-700 border border-gray-200 z-40" style={{ maxWidth: '260px' }}>
           <div className="flex items-center justify-between mb-2">
             <span className="font-semibold text-gray-900 text-sm">Grid Controls</span>
             <button

@@ -3,6 +3,7 @@ import { useGridStore } from '../store/gridStore';
 import { X, AlertTriangle, AlertCircle, Info, ChevronDown, ChevronUp, Download, CheckCircle2 } from 'lucide-react';
 import { calculateLayoutScore, LayoutScore } from '../utils/scoring';
 import { runAllSafetyChecks } from '../utils/safetyAnalysis';
+import { CONSUSONE_LOGO } from '../constants/branding';
 
 export function ScoringPanel() {
   const {
@@ -191,6 +192,7 @@ export function ScoringPanel() {
       });
 
       report += `\n${'='.repeat(80)}\n`;
+      report += `ConsusOne | FlowGrid Layout Planner\n`;
       report += `END OF REPORT\n`;
 
       const blob = new Blob([report], { type: 'text/plain' });
@@ -244,6 +246,7 @@ export function ScoringPanel() {
       }
 
       report += `\n${'='.repeat(80)}\n`;
+      report += `ConsusOne | FlowGrid Layout Planner\n`;
       report += `END OF REPORT\n`;
 
       const blob = new Blob([report], { type: 'text/plain' });
@@ -593,6 +596,14 @@ export function ScoringPanel() {
             )}
           </div>
         )}
+
+        {/* Brand footer */}
+        <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between">
+          <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-8 opacity-60" />
+          <div className="text-xs text-gray-400">
+            FlowGrid Layout Planner &middot; Generated {new Date().toLocaleDateString()}
+          </div>
+        </div>
       </div>
     </div>
   );
