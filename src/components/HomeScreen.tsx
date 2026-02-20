@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Plus, FolderOpen, Clock, Layers, ArrowRight, Trash2 } from 'lucide-react';
+import { CONSUSONE_LOGO } from '../constants/branding';
 
 interface Project {
   id: string;
@@ -156,19 +157,21 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-6 py-5">
+        <div className="max-w-5xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">FlowGrid Layout Planner</h1>
-              <p className="text-sm text-gray-500 mt-1">SLP-based facility layout optimization</p>
+            <div className="flex items-center gap-3 w-48">
+              <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-8" />
             </div>
-            <button
-              onClick={() => setCreatingProject(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              New Project
-            </button>
+            <h1 className="text-xl font-bold text-gray-900">FlowGrid Layout Planner</h1>
+            <div className="w-48 flex justify-end">
+              <button
+                onClick={() => setCreatingProject(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                New Project
+              </button>
+            </div>
           </div>
         </div>
       </div>
