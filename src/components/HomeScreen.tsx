@@ -159,11 +159,11 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 w-48">
-              <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-8" />
+            <div className="flex items-center gap-3 w-56">
+              <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-11" />
             </div>
             <h1 className="text-xl font-bold text-gray-900">FlowGrid Layout Planner</h1>
-            <div className="w-48 flex justify-end">
+            <div className="w-56 flex justify-end">
               <button
                 onClick={() => setCreatingProject(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
