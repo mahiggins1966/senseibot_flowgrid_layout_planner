@@ -381,11 +381,13 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
                 title="Back to projects"
               />
             </div>
-            <h1 className="text-xl" style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-              <span style={{ color: '#0a2533', fontWeight: 800, letterSpacing: '-0.04em' }}>Flow</span>
-              <span style={{ color: '#00a86b', fontWeight: 200 }}>Grid</span>
-              <span style={{ fontSize: '0.7em', letterSpacing: '0.15em', color: '#6c757d', fontWeight: 400, textTransform: 'uppercase' as const, marginLeft: '0.35em' }}>Layout Planner</span>
-            </h1>
+            <div className="flex flex-col items-center" style={{ fontFamily: "'Inter', -apple-system, sans-serif", lineHeight: 1 }}>
+              <h1 className="text-xl" style={{ margin: 0 }}>
+                <span style={{ color: '#0a2533', fontWeight: 900, letterSpacing: '-0.05em' }}>Flow</span>
+                <span style={{ color: '#00a86b', fontWeight: 200 }}>Grid</span>
+              </h1>
+              <span style={{ fontSize: '0.55rem', letterSpacing: '0.3em', fontWeight: 600, color: '#888888', textTransform: 'uppercase' as const, marginTop: '2px' }}>THE 5S COMPANION</span>
+            </div>
             <div className="w-56 flex justify-end">
               <button
                 onClick={onBackToHome}
