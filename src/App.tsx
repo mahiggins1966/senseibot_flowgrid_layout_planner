@@ -185,7 +185,11 @@ function App() {
       {/* Brand header */}
       <div className="bg-white border-b border-gray-100 px-4 py-2 flex items-center">
         <div className="w-56">
-          <button onClick={handleBackToHome} className="cursor-pointer" title="Back to Home">
+          <button
+            onClick={handleBackToHome}
+            className="cursor-pointer hover:opacity-70 transition-opacity rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            title="Back to Home"
+          >
             <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-11" />
           </button>
         </div>
