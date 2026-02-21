@@ -239,6 +239,7 @@ export function ProjectDashboard({ projectId, onOpenLayout, onBackToHome }: Proj
 
     const html = `<!DOCTYPE html>
 <html><head><title>Floor Plan — ${layoutName}</title>
+<script>var __LOGO="${CONSUSONE_LOGO}";</script>
 <style>
 @page { size: landscape; margin: 0.5in; }
 @media print { .no-print { display: none !important; } .page { page-break-after: always; } .page:last-child { page-break-after: auto; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
@@ -287,7 +288,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
     <div class="meta">${dateStr}<br>${timeStr}<br>${facilityDims}<br>Grid: ${gridSize}</div>
   </div>
   <div class="plan-svg">${svgMarkup}</div>
-  <div class="footer"><span><img class="f-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> FlowGrid Layout Planner</span><span>Verify measurements on site</span></div>
+  <div class="footer"><span><img class="f-logo" data-logo alt="ConsusOne" /> FlowGrid Layout Planner</span><span>Verify measurements on site</span></div>
 </div>
 
 <!-- PAGE 2: Score Report -->
@@ -323,8 +324,9 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
     return rows;
   }).join('')}
   </tbody></table>
-  <div class="footer"><span><img class="f-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> ${project.name} — ${layoutName}</span><span>Score Report</span></div>
+  <div class="footer"><span><img class="f-logo" data-logo alt="ConsusOne" /> ${project.name} — ${layoutName}</span><span>Score Report</span></div>
 </div>
+<script>document.querySelectorAll('[data-logo]').forEach(function(i){i.src=__LOGO;});</script>
 </body></html>`;
 
     printWindow.document.write(html);

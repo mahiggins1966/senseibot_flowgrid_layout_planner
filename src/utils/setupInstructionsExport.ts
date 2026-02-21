@@ -267,6 +267,7 @@ export function exportSetupInstructions(data: SetupData) {
 <html>
 <head>
   <title>Layout Setup Instructions</title>
+  <script>var __LOGO="${CONSUSONE_LOGO}";</script>
   <style>
     @page { size: portrait; margin: 0.6in; }
     @media print {
@@ -365,7 +366,7 @@ export function exportSetupInstructions(data: SetupData) {
       <div><strong>Total Steps:</strong> ${globalStep}</div>
       <div><strong>Work Areas:</strong> ${placedZones.filter(z => z.activity?.type === 'work-area').length} &nbsp;|&nbsp; <strong>Staging Lanes:</strong> ${placedZones.filter(z => z.activity?.type === 'staging-lane').length} &nbsp;|&nbsp; <strong>Corridors:</strong> ${corridorRows.length} &nbsp;|&nbsp; <strong>Doors:</strong> ${doorRows.length}</div>
     </div>
-    <div class="cover-footer"><img class="footer-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> FlowGrid Layout Planner · This is the controlled reference for floor layout execution</div>
+    <div class="cover-footer"><img class="footer-logo" data-logo alt="ConsusOne" /> FlowGrid Layout Planner · This is the controlled reference for floor layout execution</div>
   </div>
 
   <!-- ═══════════════ SAFETY & PPE ═══════════════ -->
@@ -505,8 +506,9 @@ export function exportSetupInstructions(data: SetupData) {
   </div>
 
   <div class="page-footer">
-    <img class="footer-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> FlowGrid Layout Planner — Setup Instructions — ${dateStr} — This is a controlled document. Verify you have the latest revision before executing.
+    <img class="footer-logo" data-logo alt="ConsusOne" /> FlowGrid Layout Planner — Setup Instructions — ${dateStr} — This is a controlled document. Verify you have the latest revision before executing.
   </div>
+  <script>document.querySelectorAll('[data-logo]').forEach(function(i){i.src=__LOGO;});</script>
 </body>
 </html>`;
 

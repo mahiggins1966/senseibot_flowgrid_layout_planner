@@ -315,6 +315,7 @@ export async function exportComparativeAnalysis(projectId: string) {
 <head>
 <meta charset="UTF-8">
 <title>Layout Comparison — ${project.name}</title>
+<script>var __LOGO="${CONSUSONE_LOGO}";</script>
 <style>
 @page { size: landscape; margin: 0.5in 0.65in; }
 @media print {
@@ -447,7 +448,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 <!-- ════════════════════ PAGE 1: COVER ════════════════════ -->
 <div class="page cover">
   <div class="cover-top">
-    <div class="cover-logo"><img src="${CONSUSONE_LOGO}" alt="ConsusOne" /> FlowGrid Layout Planner</div>
+    <div class="cover-logo"><img data-logo alt="ConsusOne" /> FlowGrid Layout Planner</div>
     <div class="cover-date">${dateStr}<br>${timeStr}</div>
   </div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
@@ -467,7 +468,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
     </div>
   </div>
   <div class="pf">
-    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> Confidential — For internal planning use only</span>
+    <span><img class="pf-logo" data-logo alt="ConsusOne" /> Confidential — For internal planning use only</span>
     <span>Page 1</span>
   </div>
 </div>
@@ -513,7 +514,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   </div>
 
   <div class="pf">
-    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
+    <span><img class="pf-logo" data-logo alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
     <span>Page 2</span>
   </div>
 </div>
@@ -540,7 +541,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   </div>
 
   <div class="pf">
-    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
+    <span><img class="pf-logo" data-logo alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
     <span>Page 3</span>
   </div>
 </div>
@@ -578,7 +579,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   </table>
 
   <div class="pf">
-    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
+    <span><img class="pf-logo" data-logo alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
     <span>Page 4</span>
   </div>
 </div>
@@ -616,11 +617,12 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   </div>
 
   <div class="pf">
-    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
+    <span><img class="pf-logo" data-logo alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
     <span>Page 5</span>
   </div>
 </div>
 
+<script>document.querySelectorAll('[data-logo]').forEach(function(i){i.src=__LOGO;});</script>
 </body>
 </html>`;
 

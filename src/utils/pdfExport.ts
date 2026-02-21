@@ -204,6 +204,7 @@ export function exportFloorPlanPDF(data?: ExportData) {
 <html>
 <head>
   <title>Floor Layout Plan</title>
+  <script>var __LOGO="${CONSUSONE_LOGO}";</script>
   <style>
     @page { size: landscape; margin: 0.5in; }
     @media print { .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
@@ -301,12 +302,13 @@ export function exportFloorPlanPDF(data?: ExportData) {
     </div>
 
     <div class="layout-footer">
-      <span style="display:flex;align-items:center;gap:8px;"><img class="footer-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> FlowGrid Layout Planner</span>
+      <span style="display:flex;align-items:center;gap:8px;"><img class="footer-logo" data-logo alt="ConsusOne" /> FlowGrid Layout Planner</span>
       <span>Document is for reference only — verify measurements on site</span>
     </div>
   </div>
 
   ${scorePage}
+  <script>document.querySelectorAll('[data-logo]').forEach(function(i){i.src=__LOGO;});</script>
 </body>
 </html>`;
 
