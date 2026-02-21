@@ -206,7 +206,7 @@ export function exportFloorPlanPDF(data?: ExportData) {
   <title>Floor Layout Plan</title>
   <style>
     @page { size: landscape; margin: 0.5in; }
-    @media print { .no-print { display: none !important; } }
+    @media print { .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1f2937; line-height: 1.5; }
@@ -225,7 +225,7 @@ export function exportFloorPlanPDF(data?: ExportData) {
     .plan-image svg { max-width: 100%; max-height: 65vh; height: auto; display: block; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 4px; background: white; }
 
     .layout-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #9ca3af; }
-    .layout-footer img.footer-logo { height: 24px; opacity: 0.5; }
+    .layout-footer img.footer-logo { height: 32px; }
 
     /* PAGE 2 — Score */
     .score-page { padding: 20px; }

@@ -344,8 +344,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 .cover{display:flex;flex-direction:column;justify-content:center;min-height:calc(100vh - 46px);padding:60px 72px;}
 .cover-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:64px;}
 .cover-logo{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--g400);}
-.cover-logo img{height:28px;opacity:0.6;}
-.pf img.pf-logo{height:16px;opacity:0.4;vertical-align:middle;margin-right:4px;}
+.cover-logo img{height:36px;}
+.pf img.pf-logo{height:20px;vertical-align:middle;margin-right:6px;}
 .cover-date{font-size:12px;color:var(--g400);text-align:right;line-height:1.7;}
 .cover-rule{width:48px;height:3px;background:var(--g900);margin-bottom:20px;}
 .cover h1{font-size:38px;font-weight:800;letter-spacing:-0.025em;line-height:1.15;color:var(--g900);margin-bottom:8px;}

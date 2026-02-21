@@ -273,6 +273,7 @@ export function exportSetupInstructions(data: SetupData) {
       .no-print { display: none !important; }
       .page-break { page-break-before: always; }
       .keep-together { page-break-inside: avoid; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -342,7 +343,7 @@ export function exportSetupInstructions(data: SetupData) {
     .tip strong { color: #1e40af; }
 
     .page-footer { font-size: 10px; color: #9ca3af; text-align: center; margin-top: 30px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
-    .page-footer img.footer-logo, .cover-footer img.footer-logo { height: 20px; opacity: 0.4; vertical-align: middle; margin-right: 4px; }
+    .page-footer img.footer-logo, .cover-footer img.footer-logo { height: 28px; vertical-align: middle; margin-right: 6px; }
   </style>
 </head>
 <body>

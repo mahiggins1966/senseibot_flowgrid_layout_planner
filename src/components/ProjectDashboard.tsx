@@ -255,7 +255,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
 .plan-svg { text-align: center; margin: 0 auto; }
 .plan-svg svg { max-width: 100%; max-height: 60vh; height: auto; display: block; margin: 0 auto; }
 .footer { position: absolute; bottom: 28px; left: 52px; right: 52px; display: flex; justify-content: space-between; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px; }
-.footer img.f-logo { height: 16px; opacity: 0.4; vertical-align: middle; margin-right: 4px; }
+.footer img.f-logo { height: 20px; vertical-align: middle; margin-right: 6px; }
 .score-summary { display: flex; align-items: center; gap: 24px; margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 8px; }
 .score-circle { width: 80px; height: 80px; border-radius: 50%; border: 4px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; background: white; }
 .score-pct { font-size: 24px; font-weight: 700; }
