@@ -163,9 +163,9 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
               <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-11" />
             </div>
             <h1 className="text-xl" style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
-              <span style={{ color: '#001f3f', fontWeight: 700 }}>Flow</span>
-              <span style={{ color: '#008080', fontWeight: 300 }}>Grid</span>
-              <span className="text-slate-500 text-lg font-normal ml-1">Layout Planner</span>
+              <span style={{ color: '#0a2533', fontWeight: 800, letterSpacing: '-0.04em' }}>Flow</span>
+              <span style={{ color: '#00a86b', fontWeight: 200 }}>Grid</span>
+              <span style={{ fontSize: '0.7em', letterSpacing: '0.15em', color: '#6c757d', fontWeight: 400, textTransform: 'uppercase' as const, marginLeft: '0.35em' }}>Layout Planner</span>
             </h1>
             <div className="w-56" />
           </div>
