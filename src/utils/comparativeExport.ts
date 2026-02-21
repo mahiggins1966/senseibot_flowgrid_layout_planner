@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { calculateLayoutScore, LayoutScore } from './scoring';
 import { Activity, ActivityRelationship, Corridor, Door, VolumeTiming, Zone } from '../types';
 import { generateLayoutSvg } from './layoutThumbnail';
+import { CONSUSONE_LOGO } from '../constants/branding';
 
 interface LayoutAnalysis {
   id: string;
@@ -342,7 +343,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 /* ─── Cover ─── */
 .cover{display:flex;flex-direction:column;justify-content:center;min-height:calc(100vh - 46px);padding:60px 72px;}
 .cover-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:64px;}
-.cover-logo{font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--g400);}
+.cover-logo{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--g400);}
+.cover-logo img{height:28px;opacity:0.6;}
+.pf img.pf-logo{height:16px;opacity:0.4;vertical-align:middle;margin-right:4px;}
 .cover-date{font-size:12px;color:var(--g400);text-align:right;line-height:1.7;}
 .cover-rule{width:48px;height:3px;background:var(--g900);margin-bottom:20px;}
 .cover h1{font-size:38px;font-weight:800;letter-spacing:-0.025em;line-height:1.15;color:var(--g900);margin-bottom:8px;}
@@ -444,7 +447,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 <!-- ════════════════════ PAGE 1: COVER ════════════════════ -->
 <div class="page cover">
   <div class="cover-top">
-    <div class="cover-logo">FlowGrid Layout Planner</div>
+    <div class="cover-logo"><img src="${CONSUSONE_LOGO}" alt="ConsusOne" /> FlowGrid Layout Planner</div>
     <div class="cover-date">${dateStr}<br>${timeStr}</div>
   </div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;">
@@ -464,7 +467,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
     </div>
   </div>
   <div class="pf">
-    <span>Confidential — For internal planning use only</span>
+    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> Confidential — For internal planning use only</span>
     <span>Page 1</span>
   </div>
 </div>
@@ -510,7 +513,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   </div>
 
   <div class="pf">
-    <span>${project.name} — Comparative Layout Analysis</span>
+    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
     <span>Page 2</span>
   </div>
 </div>
@@ -537,7 +540,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   </div>
 
   <div class="pf">
-    <span>${project.name} — Comparative Layout Analysis</span>
+    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
     <span>Page 3</span>
   </div>
 </div>
@@ -575,7 +578,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   </table>
 
   <div class="pf">
-    <span>${project.name} — Comparative Layout Analysis</span>
+    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
     <span>Page 4</span>
   </div>
 </div>
@@ -613,7 +616,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
   </div>
 
   <div class="pf">
-    <span>${project.name} — Comparative Layout Analysis</span>
+    <span><img class="pf-logo" src="${CONSUSONE_LOGO}" alt="ConsusOne" /> ${project.name} — Comparative Layout Analysis</span>
     <span>Page 5</span>
   </div>
 </div>
