@@ -185,7 +185,9 @@ function App() {
       {/* Brand header */}
       <div className="bg-white border-b border-gray-100 px-4 py-2 flex items-center">
         <div className="w-56">
-          <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-11" />
+          <button onClick={handleBackToHome} className="cursor-pointer" title="Back to Home">
+            <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-11" />
+          </button>
         </div>
         <div className="flex-1 text-center">
           <h1 className="text-xl font-bold text-gray-900">FlowGrid Layout Planner</h1>
