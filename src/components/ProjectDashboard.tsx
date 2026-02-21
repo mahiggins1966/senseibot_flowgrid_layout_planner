@@ -6,6 +6,7 @@ import { exportSetupInstructions } from '../utils/setupInstructionsExport';
 import { generateLayoutSvg } from '../utils/layoutThumbnail';
 import { calculateLayoutScore } from '../utils/scoring';
 import { Activity, ActivityRelationship, VolumeTiming, Zone, Corridor, Door } from '../types';
+import { CONSUSONE_LOGO } from '../constants/branding';
 
 interface Layout {
   id: string;
@@ -367,54 +368,70 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header — consistent with Home */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-6 py-4">
-          <button
-            onClick={onBackToHome}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-3"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            All Projects
-          </button>
+        <div className="max-w-5xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              {editingProjectName ? (
-                <input
-                  type="text"
-                  value={tempProjectName}
-                  onChange={(e) => setTempProjectName(e.target.value)}
-                  onBlur={handleRenameProject}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleRenameProject(); if (e.key === 'Escape') setEditingProjectName(false); }}
-                  className="text-2xl font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent"
-                  autoFocus
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <h1
-                    className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
-                    onClick={() => { setEditingProjectName(true); setTempProjectName(project.name); }}
-                  >
-                    {project.name}
-                  </h1>
-                  <button
-                    onClick={() => { setEditingProjectName(true); setTempProjectName(project.name); }}
-                    className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
-                    title="Rename project"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-              <p className="text-sm text-gray-500 mt-1">
-                Created {formatDate(project.created_at)}
-              </p>
+            <div className="flex items-center gap-3 w-56">
+              <img
+                src={CONSUSONE_LOGO}
+                alt="ConsusOne"
+                className="h-11 cursor-pointer"
+                onClick={onBackToHome}
+                title="Back to projects"
+              />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">FlowGrid Layout Planner</h1>
+            <div className="w-56 flex justify-end">
+              <button
+                onClick={onBackToHome}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                All Projects
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+        {/* Project title bar */}
+        <div className="flex items-center justify-between">
+          <div>
+            {editingProjectName ? (
+              <input
+                type="text"
+                value={tempProjectName}
+                onChange={(e) => setTempProjectName(e.target.value)}
+                onBlur={handleRenameProject}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleRenameProject(); if (e.key === 'Escape') setEditingProjectName(false); }}
+                className="text-2xl font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent"
+                autoFocus
+              />
+            ) : (
+              <div className="flex items-center gap-2">
+                <h2
+                  className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => { setEditingProjectName(true); setTempProjectName(project.name); }}
+                >
+                  {project.name}
+                </h2>
+                <button
+                  onClick={() => { setEditingProjectName(true); setTempProjectName(project.name); }}
+                  className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                  title="Rename project"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            <p className="text-sm text-gray-500 mt-1">
+              Created {formatDate(project.created_at)}
+            </p>
+          </div>
+        </div>
+
         {/* Foundation Summary */}
         {foundation && (
           <div>
