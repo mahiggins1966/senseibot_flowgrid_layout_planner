@@ -163,20 +163,24 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
               <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-11" />
             </div>
             <h1 className="text-xl font-bold text-gray-900">FlowGrid Layout Planner</h1>
-            <div className="w-56 flex justify-end">
-              <button
-                onClick={() => setCreatingProject(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                New Project
-              </button>
-            </div>
+            <div className="w-56" />
           </div>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-8">
+        {/* Action bar */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-gray-800">Your Projects</h2>
+          <button
+            onClick={() => setCreatingProject(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            New Project
+          </button>
+        </div>
+
         {/* New Project Dialog */}
         {creatingProject && (
           <div className="mb-8 bg-white border-2 border-blue-200 rounded-xl p-6 shadow-sm">
