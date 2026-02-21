@@ -162,7 +162,11 @@ export function HomeScreen({ onOpenProject }: HomeScreenProps) {
             <div className="flex items-center gap-3 w-56">
               <img src={CONSUSONE_LOGO} alt="ConsusOne" className="h-11" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">FlowGrid Layout Planner</h1>
+            <h1 className="text-xl" style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+              <span style={{ color: '#001f3f', fontWeight: 700 }}>Flow</span>
+              <span style={{ color: '#008080', fontWeight: 300 }}>Grid</span>
+              <span className="text-slate-500 text-lg font-normal ml-1">Layout Planner</span>
+            </h1>
             <div className="w-56" />
           </div>
         </div>
