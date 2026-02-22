@@ -128,20 +128,18 @@ export function ObjectLibrary() {
                 {object.grid_width} × {object.grid_length} squares
               </div>
             </div>
-            {!object.is_default && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteCustom(object.id);
-                }}
-                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-                title="Delete custom item"
-                draggable={false}
-                onDragStart={(e) => e.preventDefault()}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteCustom(object.id);
+              }}
+              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+              title="Delete item"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         );
       })}
